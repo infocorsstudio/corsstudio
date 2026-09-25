@@ -1,0 +1,52 @@
+@font-face {
+    font-family: 'Consola';
+    src: url('/assets/fonts/consola.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'ConsolaBold';
+    src: url('/assets/fonts/consolab.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+/* ===== Color palette (master) ===== */
+:root {
+    --color-theme: #e60000;      /* 主题色 */
+    --color-background: #f2f2f2;  /* 背景色 */
+    --color-text: #0e0e0e;
+
+    /* ===== Font size scale ===== */
+    --font-xxl: 4rem;      /* 64px */
+    --font-xl: 3rem;       /* 48px */
+    --font-l: 2rem;        /* 32px */
+    --font-m: 1.5rem;      /* 24px */
+    --font-s: 1rem;        /* 16px */
+    --font-xs: 0.875rem;   /* 14px */
+
+    /* ===== Gap / spacing scale ===== */
+    --gap-xxl: 4rem;       /* 64px */
+    --gap-xl: 3rem;        /* 48px */
+    --gap-l: 2rem;         /* 32px */
+    --gap-m: 1.5rem;       /* 24px */
+    --gap-s: 1rem;         /* 16px */
+    --gap-xs: 0.5rem;      /* 8px */
+    --gap-xxs: 0.25rem;    /* 4px */
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    overflow-x: hidden;
+    background-color: var(--color-background);
+}
+
+body {
+    font-family: 'Consola', sans-serif;
+}

@@ -1,0 +1,71 @@
+#header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: var(--gap-s);
+    font-family: 'ConsolaBold', sans-serif;
+    font-weight: bold;
+    z-index: 1001;
+}
+
+#navbar {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+/* Left logo group */
+#navLogo {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--gap-s);
+    text-decoration: none;
+    color: var(--color-text);
+}
+
+.logo-icon {
+    display: inline-block;
+    width: 8rem;
+}
+
+.logo-text {
+    font-size: var(--font-l);
+    line-height: 1;
+}
+
+/* Right links */
+#navLinks {
+    display: flex;
+    flex-direction: row;
+    gap: var(--gap-s);
+    align-items: center;
+}
+
+.navText {
+    font-size: var(--font-l);
+    text-decoration: none;
+    color: var(--color-text);
+    border: 1px solid var(--color-text);
+    padding: var(--gap-xxs) var(--gap-s);
+}
+
+#navLogo,
+.navText {
+    cursor: pointer;
+}
+
+@media (max-width: 800px) {
+    .logo-text,
+    .navText {
+        font-size: var(--font-m);
+    }
+
+    .logo-icon {
+        width: 28px;
+        height: 28px;
+    }
+}
