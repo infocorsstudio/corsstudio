@@ -70,15 +70,19 @@ const Header = () => {
   return (
     <header id="header">
       <nav id="navbar">
-        {/* Left: logo placeholder + studio name, links back to home */}
+        {/* Left: studio name, links back to home */}
         <Link
           to="/"
           id="navLogo"
           onMouseEnter={handleLogoEnter}
           onMouseLeave={handleLogoLeave}
         >
-          <img src="/assets/icons/logo.svg" alt="CORS Studio" className="logo-icon" />
           <span className="logo-text">CORS Studio</span>
+        </Link>
+
+        {/* Center: logo icon */}
+        <Link to="/" id="navCenter">
+          <img src="/assets/icons/logo.svg" alt="CORS Studio" className="logo-icon" />
         </Link>
 
         {/* Right: links to the other pages */}

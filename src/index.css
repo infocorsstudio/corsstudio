@@ -15,7 +15,7 @@
 /* ===== Color palette (master) ===== */
 :root {
     --color-theme: #e60000;      /* 主题色 */
-    --color-background: #f2f2f2;  /* 背景色 */
+    --color-background: #fcfcfc;  /* 背景色 */
     --color-text: #0e0e0e;
 
     /* ===== Font size scale ===== */
@@ -25,6 +25,7 @@
     --font-m: 1.5rem;      /* 24px */
     --font-s: 1rem;        /* 16px */
     --font-xs: 0.875rem;   /* 14px */
+    --font-xxs: 0.75rem;   /* 12px */
 
     /* ===== Gap / spacing scale ===== */
     --gap-xxl: 4rem;       /* 64px */

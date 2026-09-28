@@ -3,3 +3,21 @@
   width: 100vw;
   height: 100vh;
 }
+
+.home-hero {
+  position: relative;
+}
+
+.hero-intro {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: var(--gap-s);
+  max-width: 40rem;
+  font-size: var(--font-xxs);
+  color: var(--color-theme);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  text-align: justify;
+}
