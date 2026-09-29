@@ -4,7 +4,7 @@
     left: 0;
     width: 100%;
     padding: var(--gap-s);
-    font-family: 'ConsolaBold', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: bold;
     z-index: 1001;
 }
@@ -40,7 +40,7 @@
 
 .logo-icon {
     display: block;
-    width: 3.5rem;
+    width: 4rem;
 }
 
 .logo-text {

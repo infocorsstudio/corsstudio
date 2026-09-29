@@ -1,9 +1,11 @@
 import './HomePage.css'
+import HeroBackground from '../../components/HeroBackground/HeroBackground'
 
 const HomePage = () => {
   return (
     <div className="home-page">
       <section className="home-hero">
+        <HeroBackground />
         <div className="hero-intro">
           <p>
             CORS Studio is an independent publishing and design studio founded

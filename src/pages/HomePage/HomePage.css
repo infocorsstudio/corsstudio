@@ -10,11 +10,13 @@
 
 .hero-intro {
   position: absolute;
+  z-index: 1;
   left: 0;
   bottom: 0;
   padding: var(--gap-s);
-  max-width: 40rem;
-  font-size: var(--font-xxs);
+  max-width: 40%;
+  font-family: 'Inter', sans-serif;
+  font-size: var(--font-xs);
   color: var(--color-theme);
   display: flex;
   flex-direction: column;

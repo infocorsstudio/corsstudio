@@ -1,20 +1,20 @@
 @font-face {
-    font-family: 'Consola';
-    src: url('/assets/fonts/consola.ttf') format('truetype');
-    font-weight: normal;
+    font-family: 'Inter';
+    src: url('/assets/fonts/Inter/Inter-VariableFont_opsz,wght.ttf') format('truetype');
+    font-weight: 100 900;
     font-style: normal;
 }
 
 @font-face {
-    font-family: 'ConsolaBold';
-    src: url('/assets/fonts/consolab.ttf') format('truetype');
-    font-weight: bold;
-    font-style: normal;
+    font-family: 'Inter';
+    src: url('/assets/fonts/Inter/Inter-Italic-VariableFont_opsz,wght.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: italic;
 }
 
 /* ===== Color palette (master) ===== */
 :root {
-    --color-theme: #e60000;      /* 主题色 */
+    --color-theme: #f70000;      /* 主题色 */
     --color-background: #fcfcfc;  /* 背景色 */
     --color-text: #0e0e0e;
 
@@ -23,9 +23,10 @@
     --font-xl: 3rem;       /* 48px */
     --font-l: 2rem;        /* 32px */
     --font-m: 1.5rem;      /* 24px */
-    --font-s: 1rem;        /* 16px */
-    --font-xs: 0.875rem;   /* 14px */
-    --font-xxs: 0.75rem;   /* 12px */
+    --font-s: 1.25rem;    /* 20px */
+    --font-xs: 1rem;        /* 16px */
+    --font-xxs: 0.875rem;   /* 14px */
+    --font-xxxs: 0.75rem;   /* 12px */
 
     /* ===== Gap / spacing scale ===== */
     --gap-xxl: 4rem;       /* 64px */
