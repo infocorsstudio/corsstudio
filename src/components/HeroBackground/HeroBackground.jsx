@@ -15,10 +15,18 @@ const LOGO_WORLD_WIDTH = 7 // world units the logo spans
 const THICKNESS = 0.12 // z depth of the particle cloud
 const MODEL_OFFSET_X = 2.7 // shift the whole model to the right
 
+// Edge biasing: push particles toward the outline of the shape.
+const EDGE_BIAS = 0.65 // 0 = uniform fill, 1 = only along the edges
+const EDGE_THICKNESS = 4 // raster pixels counted as the "edge band"
+
 // Mouse repulsion
 const REPEL_RADIUS = 0.18 // in NDC (screen) space
 const REPEL_STRENGTH = 1.2 // world units pushed at the mouse center
 const SWIRL_SPEED = 1.4 // how fast repelled particles orbit the mouse
+
+// Initial angle the model faces at load (degrees), around the Y axis.
+const INITIAL_ANGLE_DEG = 275 // e.g. 30, 90, 180
+const INITIAL_ANGLE = (INITIAL_ANGLE_DEG * Math.PI) / 180
 
 // Subtle camera parallax following the mouse
 const PARALLAX_X = 0.05 // world units the camera drifts horizontally
@@ -48,17 +56,36 @@ const sampleLogoPoints = (count) => {
   ctx.fill(new Path2D(LOGO_PATH))
 
   const { data } = ctx.getImageData(0, 0, w, h)
-  const opaque = []
+  const isOpaque = (x, y) =>
+    x >= 0 && x < w && y >= 0 && y < h && data[(y * w + x) * 4 + 3] > 128
+
+  // Split opaque pixels into an edge band and the interior fill.
+  const edge = []
+  const fill = []
+  const R = EDGE_THICKNESS
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      if (data[(y * w + x) * 4 + 3] > 128) opaque.push([x, y])
+      if (!isOpaque(x, y)) continue
+      let onEdge = false
+      for (let dy = -R; dy <= R && !onEdge; dy++) {
+        for (let dx = -R; dx <= R; dx++) {
+          if (!isOpaque(x + dx, y + dy)) {
+            onEdge = true
+            break
+          }
+        }
+      }
+      ;(onEdge ? edge : fill).push([x, y])
     }
   }
 
   const worldScale = LOGO_WORLD_WIDTH / w
   const pts = new Float32Array(count * 3)
   for (let i = 0; i < count; i++) {
-    const [px, py] = opaque[(Math.random() * opaque.length) | 0]
+    const useEdge =
+      edge.length && (fill.length === 0 || Math.random() < EDGE_BIAS)
+    const pool = useEdge ? edge : fill
+    const [px, py] = pool[(Math.random() * pool.length) | 0]
     pts[i * 3] = (px - w / 2) * worldScale
     pts[i * 3 + 1] = (h / 2 - py) * worldScale
     pts[i * 3 + 2] = (Math.random() - 0.5) * THICKNESS
@@ -101,7 +128,8 @@ const makeTriangleTexture = () => {
   return new THREE.CanvasTexture(canvas)
 }
 
-const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
+// Matches anime.js out(4): 1 - (1 - t)^4 (same curve as the header entrance)
+const easeOut4 = (t) => 1 - Math.pow(1 - t, 4)
 
 const HeroBackground = () => {
   const mountRef = useRef(null)
@@ -283,7 +311,7 @@ const HeroBackground = () => {
       if (trailLen !== cachedTrailLen) buildDepthColor(trailLen)
 
       const t = clock.getElapsedTime()
-      const a = t * 0.3
+      const a = INITIAL_ANGLE + t * 0.3
       const cosA = Math.cos(a)
       const sinA = Math.sin(a)
       const aspect = camera.aspect
@@ -304,7 +332,7 @@ const HeroBackground = () => {
           Math.max((t - ENTRANCE_DELAY - delays[i]) / GATHER_DURATION, 0),
           1
         )
-        const e = easeOutCubic(p)
+        const e = easeOut4(p)
         const bx = starts[i3] + (targets[i3] - starts[i3]) * e
         const by = starts[i3 + 1] + (targets[i3 + 1] - starts[i3 + 1]) * e
         const bz = starts[i3 + 2] + (targets[i3 + 2] - starts[i3 + 2]) * e

@@ -1,5 +1,6 @@
 import './HomePage.css'
 import HeroBackground from '../../components/HeroBackground/HeroBackground'
+import ClothScene from '../../components/ClothScene/ClothScene'
 
 const introParagraphs = [
   'CORS Studio is an independent publishing and design studio founded by Yuehan Ma and Yichen Ji. We bring together writing, artwork, photography, and other print-based contributions from diverse creative voices.',
@@ -19,6 +20,11 @@ const HomePage = () => {
         </div>
       </section>
       <section className="home-section-2"></section>
+      <section className="home-section-3">
+        <div className="cloth-canvas-wrap">
+          <ClothScene />
+        </div>
+      </section>
     </div>
   )
 }

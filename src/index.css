@@ -18,6 +18,9 @@
     --color-background: #fcfcfc;  /* 背景色 */
     --color-text: #0e0e0e;
 
+    /* Header height (used to offset full-screen sections) */
+    --header-height: 3.5rem;
+
     /* ===== Font size scale ===== */
     --font-xxl: 4rem;      /* 64px */
     --font-xl: 3rem;       /* 48px */
