@@ -24,6 +24,36 @@ const HomePage = () => {
         <div className="cloth-canvas-wrap">
           <ClothScene />
         </div>
+        <div className="issue-intro">
+          <h2>CORS Issue 001 / Spring 2027</h2>
+          <p>
+            CORS Studio is pleased to present its inaugural issue. Issue 001
+            brings together three interconnected sections that examine unstable
+            boundaries, altered identities, and the traces left by what can no
+            longer be seen.
+          </p>
+          <p>
+            <strong>I. Almost Human</strong>
+            <br />
+            Where does the human end, and something else begin?
+          </p>
+          <p>
+            <strong>II. The Other Side</strong>
+            <br />
+            What exists beyond the boundaries we know?
+          </p>
+          <p>
+            <strong>III. Something Is Missing</strong>
+            <br />
+            How do we recognize something through its absence?
+          </p>
+          <p>
+            Spanning fashion, graphic design, art, photography, writing, and
+            contemporary culture, Issue 001 considers what it means to approach a
+            boundary, to cross it, and to attend to what has been left behind.
+          </p>
+          <p>Open calls for each section will be announced in due course.</p>
+        </div>
       </section>
     </div>
   )

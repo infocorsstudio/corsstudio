@@ -7,12 +7,32 @@
 .home-section-3 {
   width: 100vw;
   height: 100vh;
+  display: flex;
+  flex-direction: row;
 }
 
 /* Cloth canvas fills a vertical half of the section */
 .cloth-canvas-wrap {
   width: 50vw;
   height: 100%;
+}
+
+/* Issue intro text on the right half */
+.issue-intro {
+  width: 50vw;
+  height: 100%;
+  padding: var(--gap-l);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--gap-s);
+  font-family: 'Inter', sans-serif;
+  font-size: var(--font-xs);
+}
+
+.issue-intro h2 {
+  font-size: var(--font-m);
+  color: var(--color-theme);
 }
 
 .home-hero {

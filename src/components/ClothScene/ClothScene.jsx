@@ -1,25 +1,27 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { ParametricGeometry } from 'three/examples/jsm/geometries/ParametricGeometry.js'
 import './ClothScene.css'
 
 // Live-tunable defaults (exposed as debug controls)
-const DEFAULT_WIND = 0.1 // wind strength multiplier (fixed)
+const DEFAULT_WIND = 0.2 // ambient wind strength (when pointer is away)
+const MOUSE_WIND = 3 // localized wind strength at the pointer
+const MOUSE_RADIUS = 100 // local-space radius affected around the pointer hit
 const DEFAULT_DISTANCE = 300 // camera distance on z (fixed)
-const DEFAULT_FOCAL = 35 // camera focal length (mm)
+const DEFAULT_FOCAL = 25 // camera focal length (mm)
 const DEFAULT_CLOTH_SCALE_X = 1 // cloth width multiplier
 const DEFAULT_CLOTH_SCALE_Y = 1 // cloth height multiplier (initial, before texture loads)
-const HEIGHT_GRAVITY_COMP = 0.8 // shrink height a bit to offset gravity stretch (<1)
+const HEIGHT_GRAVITY_COMP = 0.7 // shrink height a bit to offset gravity stretch (<1)
 const DEFAULT_STIFFNESS = 1 // constraint stiffness (0 = soft, 1 = fully rigid)
-const TOP_ANCHOR_Y = 55 // vertical world offset of the fixed top edge (+ up / - down)
+const TOP_ANCHOR_Y = 30 // vertical world offset of the fixed top edge (+ up / - down)
 
 // --- Cloth simulation constants (verlet integration) ---
 const DAMPING = 0.05
 const DRAG = 1 - DAMPING
 const MASS = 0.1
-const restDistance = 11
-const xSegs = 19
-const ySegs = 14
+const restDistance = 18
+const xSegs = 18
+const ySegs = 16
 const clothWidth = restDistance * xSegs
 const clothHeight = restDistance * ySegs
 
@@ -103,24 +105,8 @@ const satisfyConstraint = (p1, p2, distance, diff, stiffness) => {
 const ClothScene = () => {
   const mountRef = useRef(null)
 
-  const [wind, setWind] = useState(DEFAULT_WIND)
-  const [focal, setFocal] = useState(DEFAULT_FOCAL)
-  const [stiffness, setStiffness] = useState(DEFAULT_STIFFNESS)
-  const [wireframe, setWireframe] = useState(false)
-
   // Cloth height scale, derived from the texture aspect ratio (set on image load).
   const autoScaleYRef = useRef(DEFAULT_CLOTH_SCALE_Y)
-
-  // Shared with the animation loop so changes apply without restarting the scene.
-  const ctrlRef = useRef({
-    wind: DEFAULT_WIND,
-    focal: DEFAULT_FOCAL,
-    stiffness: DEFAULT_STIFFNESS,
-    wireframe: false,
-  })
-  useEffect(() => {
-    ctrlRef.current = { wind, focal, stiffness, wireframe }
-  }, [wind, focal, stiffness, wireframe])
 
   useEffect(() => {
     const mount = mountRef.current
@@ -176,23 +162,77 @@ const ClothScene = () => {
     const normal = new THREE.Vector3()
     const diff = new THREE.Vector3()
 
-    const simulate = (now) => {
-      // Wind blows mostly toward the camera (+z) so the cloth billows outward.
-      const strength = (Math.cos(now / 7000) * 20 + 45) * ctrlRef.current.wind
-      windForce
-        .set(Math.sin(now / 2000), Math.cos(now / 3000), -(Math.sin(now / 1000) + 0.6))
-        .normalize()
-        .multiplyScalar(strength)
+    // Pointer raycasting onto the cloth surface.
+    const pointer = new THREE.Vector2()
+    let pointerActive = false
+    const raycaster = new THREE.Raycaster()
+    const localHit = new THREE.Vector3()
 
-      // Aerodynamic force: apply wind along each vertex normal.
-      const indices = clothGeometry.index
-      const normals = clothGeometry.attributes.normal
-      for (let i = 0, il = indices.count; i < il; i += 3) {
-        for (let j = 0; j < 3; j++) {
-          const idx = indices.getX(i + j)
-          normal.fromBufferAttribute(normals, idx)
-          tmpForce.copy(normal).normalize().multiplyScalar(normal.dot(windForce))
-          particles[idx].addForce(tmpForce)
+    const onPointerMove = (e) => {
+      const rect = mount.getBoundingClientRect()
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+      pointerActive = true
+    }
+    const onPointerLeave = () => {
+      pointerActive = false
+    }
+    mount.addEventListener('pointermove', onPointerMove)
+    mount.addEventListener('pointerleave', onPointerLeave)
+
+    const simulate = (now) => {
+      const baseStrength = Math.cos(now / 7000) * 20 + 45
+
+      // Does the pointer currently hit the cloth?
+      let hovering = false
+      if (pointerActive) {
+        clothMesh.updateMatrixWorld()
+        raycaster.setFromCamera(pointer, camera)
+        const hits = raycaster.intersectObject(clothMesh)
+        if (hits.length) {
+          hovering = true
+          localHit.copy(hits[0].point)
+          clothMesh.worldToLocal(localHit)
+        }
+      }
+
+      if (hovering) {
+        // Localized gust pushing the cloth away from the camera at the pointer.
+        const strength = baseStrength * MOUSE_WIND
+        const r2 = MOUSE_RADIUS * MOUSE_RADIUS
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i]
+          const dx = p.position.x - localHit.x
+          const dy = p.position.y - localHit.y
+          const dz = p.position.z - localHit.z
+          const d2 = dx * dx + dy * dy + dz * dz
+          if (d2 < r2) {
+            const falloff = 1 - Math.sqrt(d2) / MOUSE_RADIUS
+            tmpForce.set(0, 0, -1).multiplyScalar(strength * falloff)
+            p.addForce(tmpForce)
+          }
+        }
+      } else {
+        // Ambient random wind, applied along each vertex normal.
+        const strength = baseStrength * DEFAULT_WIND
+        windForce
+          .set(
+            Math.sin(now / 2000),
+            Math.cos(now / 3000),
+            -(Math.sin(now / 1000) + 0.6)
+          )
+          .normalize()
+          .multiplyScalar(strength)
+
+        const indices = clothGeometry.index
+        const normals = clothGeometry.attributes.normal
+        for (let i = 0, il = indices.count; i < il; i += 3) {
+          for (let j = 0; j < 3; j++) {
+            const idx = indices.getX(i + j)
+            normal.fromBufferAttribute(normals, idx)
+            tmpForce.copy(normal).normalize().multiplyScalar(normal.dot(windForce))
+            particles[idx].addForce(tmpForce)
+          }
         }
       }
 
@@ -202,10 +242,9 @@ const ClothScene = () => {
         p.integrate(TIMESTEP_SQ)
       }
 
-      const stiffness = ctrlRef.current.stiffness
       for (let i = 0; i < constraints.length; i++) {
         const c = constraints[i]
-        satisfyConstraint(c[0], c[1], c[2], diff, stiffness)
+        satisfyConstraint(c[0], c[1], c[2], diff, DEFAULT_STIFFNESS)
       }
 
       // Pin the top row so the cloth hangs and flutters.
@@ -227,22 +266,13 @@ const ClothScene = () => {
     window.addEventListener('resize', resize)
 
     let frameId
-    let lastFocal = DEFAULT_FOCAL
     const positionAttribute = clothGeometry.attributes.position
 
     const animate = (now) => {
-      // Apply live debug controls.
-      const c = ctrlRef.current
-      if (c.focal !== lastFocal) {
-        camera.setFocalLength(c.focal)
-        camera.updateProjectionMatrix()
-        lastFocal = c.focal
-      }
       // Height comes from the texture aspect ratio; scales from the TOP edge.
       const sy = autoScaleYRef.current
       clothMesh.scale.set(DEFAULT_CLOTH_SCALE_X, sy, 1)
       clothMesh.position.y = TOP_ANCHOR_Y - ((sy - 1) * clothHeight) / 2
-      material.wireframe = c.wireframe
 
       simulate(now)
       for (let i = 0; i < particles.length; i++) {
@@ -251,6 +281,7 @@ const ClothScene = () => {
       }
       positionAttribute.needsUpdate = true
       clothGeometry.computeVertexNormals()
+      clothGeometry.computeBoundingSphere() // keep raycasting in sync with the moving cloth
       renderer.render(scene, camera)
       frameId = requestAnimationFrame(animate)
     }
@@ -259,6 +290,8 @@ const ClothScene = () => {
     return () => {
       cancelAnimationFrame(frameId)
       window.removeEventListener('resize', resize)
+      mount.removeEventListener('pointermove', onPointerMove)
+      mount.removeEventListener('pointerleave', onPointerLeave)
       clothGeometry.dispose()
       clothTexture.dispose()
       material.dispose()
@@ -272,44 +305,6 @@ const ClothScene = () => {
   return (
     <div className="cloth-scene">
       <div ref={mountRef} className="cloth-canvas" />
-      <div className="cloth-controls">
-        <label>
-          <span>风速 {wind.toFixed(2)}</span>
-          <input
-            type="range"
-            min="0"
-            max="3"
-            step="0.05"
-            value={wind}
-            onChange={(e) => setWind(Number(e.target.value))}
-          />
-        </label>
-        <label>
-          <span>刚度 {stiffness.toFixed(2)}</span>
-          <input
-            type="range"
-            min="0.05"
-            max="1"
-            step="0.05"
-            value={stiffness}
-            onChange={(e) => setStiffness(Number(e.target.value))}
-          />
-        </label>
-        <label>
-          <span>焦距 {focal}mm</span>
-          <input
-            type="range"
-            min="15"
-            max="150"
-            step="1"
-            value={focal}
-            onChange={(e) => setFocal(Number(e.target.value))}
-          />
-        </label>
-        <button type="button" onClick={() => setWireframe((v) => !v)}>
-          材质：{wireframe ? '实心 + Wireframe' : '实心'}
-        </button>
-      </div>
     </div>
   )
 }

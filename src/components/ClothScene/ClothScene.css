@@ -12,23 +12,3 @@
 .cloth-canvas canvas {
   display: block;
 }
-
-.cloth-controls {
-  position: absolute;
-  top: var(--gap-s);
-  left: var(--gap-s);
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-xs);
-  font-size: var(--font-xs);
-}
-
-.cloth-controls label {
-  display: flex;
-  flex-direction: column;
-}
-
-.cloth-controls button {
-  font-size: var(--font-xs);
-  cursor: pointer;
-}
