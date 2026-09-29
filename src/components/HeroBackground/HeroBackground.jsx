@@ -129,9 +129,8 @@ const HeroBackground = () => {
     mount.appendChild(renderer.domElement)
 
     const styles = getComputedStyle(document.documentElement)
-    const themeColor = new THREE.Color(
-      styles.getPropertyValue('--color-theme').trim() || '#e60000'
-    )
+    // Particle color is independent from the site theme color.
+    const themeColor = new THREE.Color('#ff0000')
     const bgColor = new THREE.Color(
       styles.getPropertyValue('--color-background').trim() || '#fcfcfc'
     )
