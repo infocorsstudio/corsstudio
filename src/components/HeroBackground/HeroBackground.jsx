@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import './HeroBackground.css'
 
@@ -20,6 +20,11 @@ const REPEL_RADIUS = 0.18 // in NDC (screen) space
 const REPEL_STRENGTH = 1.2 // world units pushed at the mouse center
 const SWIRL_SPEED = 1.4 // how fast repelled particles orbit the mouse
 
+// Subtle camera parallax following the mouse
+const PARALLAX_X = 0.05 // world units the camera drifts horizontally
+const PARALLAX_Y = 0.02 // world units the camera drifts vertically
+const PARALLAX_EASE = 0.05 // smoothing (smaller = slower follow)
+
 // Live-tunable defaults (exposed as debug sliders)
 const DEFAULTS = {
   trailLen: 5,
@@ -28,14 +33,6 @@ const DEFAULTS = {
   opacity: 1,
   dodge: 0.04,
 }
-
-const SLIDERS = [
-  { key: 'trailLen', label: '尾巴长度', min: 2, max: TRAIL_MAX, step: 1 },
-  { key: 'count', label: '粒子总数', min: 200, max: MAX_PARTICLES, step: 100 },
-  { key: 'size', label: '粒子大小', min: 0.02, max: 0.25, step: 0.005 },
-  { key: 'opacity', label: '粒子透明度', min: 0.1, max: 1, step: 0.05 },
-  { key: 'dodge', label: '避开速度', min: 0.01, max: 0.3, step: 0.01 },
-]
 
 // Sample points that fill the logo shape by rasterizing the path.
 const sampleLogoPoints = (count) => {
@@ -109,12 +106,6 @@ const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
 const HeroBackground = () => {
   const mountRef = useRef(null)
   const cfgRef = useRef({ ...DEFAULTS })
-  const [ui, setUi] = useState({ ...DEFAULTS })
-
-  const update = (key, val) => {
-    cfgRef.current[key] = val
-    setUi((s) => ({ ...s, [key]: val }))
-  }
 
   useEffect(() => {
     const mount = mountRef.current
@@ -278,6 +269,7 @@ const HeroBackground = () => {
     const proj = new THREE.Vector3()
     const clock = new THREE.Clock()
     const GATHER_DURATION = 2.6
+    const ENTRANCE_DELAY = 0.5 // wait before particles start gathering
     let frameId
 
     const animate = () => {
@@ -297,11 +289,21 @@ const HeroBackground = () => {
       const aspect = camera.aspect
       const arr = posAttr.array
 
+      // Camera parallax: drift toward the mouse, ease back to center on leave.
+      const camTX = mouse.active ? mouse.x * PARALLAX_X : 0
+      const camTY = mouse.active ? mouse.y * PARALLAX_Y : 0
+      camera.position.x += (camTX - camera.position.x) * PARALLAX_EASE
+      camera.position.y += (camTY - camera.position.y) * PARALLAX_EASE
+      camera.updateMatrixWorld() // keep projection fresh for repulsion below
+
       histHead = (histHead + 1) % TRAIL_MAX
 
       for (let i = 0; i < count; i++) {
         const i3 = i * 3
-        const p = Math.min(Math.max((t - delays[i]) / GATHER_DURATION, 0), 1)
+        const p = Math.min(
+          Math.max((t - ENTRANCE_DELAY - delays[i]) / GATHER_DURATION, 0),
+          1
+        )
         const e = easeOutCubic(p)
         const bx = starts[i3] + (targets[i3] - starts[i3]) * e
         const by = starts[i3 + 1] + (targets[i3 + 1] - starts[i3 + 1]) * e
@@ -410,28 +412,7 @@ const HeroBackground = () => {
     }
   }, [])
 
-  return (
-    <>
-      <div ref={mountRef} className="hero-background" />
-      <div className="hero-debug">
-        {SLIDERS.map(({ key, label, min, max, step }) => (
-          <label key={key}>
-            <span>
-              {label} <b>{ui[key]}</b>
-            </span>
-            <input
-              type="range"
-              min={min}
-              max={max}
-              step={step}
-              value={ui[key]}
-              onChange={(e) => update(key, parseFloat(e.target.value))}
-            />
-          </label>
-        ))}
-      </div>
-    </>
-  )
+  return <div ref={mountRef} className="hero-background" />
 }
 
 export default HeroBackground

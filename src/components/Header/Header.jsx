@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { animate } from 'animejs'
+import TextScramble from '../TextScramble/TextScramble'
 import './Header.css'
 
 const navItems = [
@@ -17,8 +18,8 @@ const Header = () => {
     animate('#header', {
       opacity: [0, 1],
       translateY: [-50, 0],
-      duration: 1000,
-      delay: 300,
+      duration: 900,
+      delay: 1000,
       ease: 'out(4)',
     })
   }, [location.pathname])
@@ -77,7 +78,9 @@ const Header = () => {
           onMouseEnter={handleLogoEnter}
           onMouseLeave={handleLogoLeave}
         >
-          <span className="logo-text">CORS Studio</span>
+          <span className="logo-text">
+            <TextScramble text="CORS Studio" trigger={location.pathname} />
+          </span>
         </Link>
 
         {/* Center: logo icon */}
@@ -95,7 +98,7 @@ const Header = () => {
               onMouseEnter={handleEnter}
               onMouseLeave={handleLeave}
             >
-              {item.label}
+              <TextScramble text={item.label} trigger={location.pathname} />
             </Link>
           ))}
         </div>

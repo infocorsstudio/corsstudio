@@ -2,33 +2,16 @@
   position: absolute;
   inset: 0;
   z-index: 0;
+  opacity: 0;
+  animation: hero-bg-fade 0.5s ease forwards;
+}
+
+@keyframes hero-bg-fade {
+  to {
+    opacity: 1;
+  }
 }
 
 .hero-background canvas {
   display: block;
-}
-
-.hero-debug {
-  position: fixed;
-  right: 12px;
-  bottom: 12px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.8);
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-}
-
-.hero-debug label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.hero-debug input {
-  width: 120px;
 }
