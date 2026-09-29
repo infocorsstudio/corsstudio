@@ -4,23 +4,24 @@ import { ParametricGeometry } from 'three/examples/jsm/geometries/ParametricGeom
 import './ClothScene.css'
 
 // Live-tunable defaults (exposed as debug controls)
-const DEFAULT_WIND = 0.2 // ambient wind strength (when pointer is away)
+const DEFAULT_WIND = 0.1 // ambient wind strength (when pointer is away)
 const MOUSE_WIND = 3 // localized wind strength at the pointer
 const MOUSE_RADIUS = 100 // local-space radius affected around the pointer hit
+const HIT_GRACE_MS = 150 // keep "hovering" this long after the last ray hit (anti-flicker)
 const DEFAULT_DISTANCE = 300 // camera distance on z (fixed)
 const DEFAULT_FOCAL = 25 // camera focal length (mm)
 const DEFAULT_CLOTH_SCALE_X = 1 // cloth width multiplier
 const DEFAULT_CLOTH_SCALE_Y = 1 // cloth height multiplier (initial, before texture loads)
 const HEIGHT_GRAVITY_COMP = 0.7 // shrink height a bit to offset gravity stretch (<1)
 const DEFAULT_STIFFNESS = 1 // constraint stiffness (0 = soft, 1 = fully rigid)
-const TOP_ANCHOR_Y = 30 // vertical world offset of the fixed top edge (+ up / - down)
+const TOP_ANCHOR_Y = 40 // vertical world offset of the fixed top edge (+ up / - down)
 
 // --- Cloth simulation constants (verlet integration) ---
-const DAMPING = 0.05
+const DAMPING = 0.04
 const DRAG = 1 - DAMPING
 const MASS = 0.1
-const restDistance = 18
-const xSegs = 18
+const restDistance = 16
+const xSegs = 20
 const ySegs = 16
 const clothWidth = restDistance * xSegs
 const clothHeight = restDistance * ySegs
@@ -154,10 +155,43 @@ const ClothScene = () => {
     const clothMesh = new THREE.Mesh(clothGeometry, material)
     scene.add(clothMesh)
 
+    // --- Debug wireframe indicators ---
+    // Ambient wind direction (cyan): a small wireframe sphere + arrow.
+    const windIndicator = new THREE.Group()
+    const windSphereGeo = new THREE.SphereGeometry(20, 12, 8)
+    const windSphereMat = new THREE.MeshBasicMaterial({
+      color: 0x00ffff,
+      wireframe: true,
+    })
+    windIndicator.add(new THREE.Mesh(windSphereGeo, windSphereMat))
+    const windArrow = new THREE.ArrowHelper(
+      new THREE.Vector3(0, 0, -1),
+      new THREE.Vector3(0, 0, 0),
+      70,
+      0x00ffff
+    )
+    windIndicator.add(windArrow)
+    windIndicator.position.set(-clothWidth * 0.22, clothHeight * 0.5, 60)
+    scene.add(windIndicator)
+
+    // Mouse-affected region (lime): wireframe sphere; child of the cloth so it
+    // inherits the cloth scale and matches the actual affected area.
+    const mouseSphereGeo = new THREE.SphereGeometry(MOUSE_RADIUS, 16, 12)
+    const mouseSphereMat = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,
+      wireframe: true,
+      depthTest: false, // always draw on top, avoids z-fighting with the cloth
+      depthWrite: false,
+    })
+    const mouseSphere = new THREE.Mesh(mouseSphereGeo, mouseSphereMat)
+    mouseSphere.visible = false
+    clothMesh.add(mouseSphere)
+
     const { particles, constraints } = buildCloth()
 
     const gravity = new THREE.Vector3(0, -GRAVITY, 0).multiplyScalar(MASS)
     const windForce = new THREE.Vector3()
+    const windDir = new THREE.Vector3()
     const tmpForce = new THREE.Vector3()
     const normal = new THREE.Vector3()
     const diff = new THREE.Vector3()
@@ -165,6 +199,7 @@ const ClothScene = () => {
     // Pointer raycasting onto the cloth surface.
     const pointer = new THREE.Vector2()
     let pointerActive = false
+    let lastHitMs = -Infinity // timestamp of the last successful ray hit (for grace buffer)
     const raycaster = new THREE.Raycaster()
     const localHit = new THREE.Vector3()
 
@@ -183,21 +218,53 @@ const ClothScene = () => {
     const simulate = (now) => {
       const baseStrength = Math.cos(now / 7000) * 20 + 45
 
-      // Does the pointer currently hit the cloth?
-      let hovering = false
+      // Raycast the pointer onto the cloth. Because the cloth is always moving,
+      // the ray hits/misses intermittently; a grace buffer keeps the state stable.
       if (pointerActive) {
         clothMesh.updateMatrixWorld()
         raycaster.setFromCamera(pointer, camera)
         const hits = raycaster.intersectObject(clothMesh)
         if (hits.length) {
-          hovering = true
+          lastHitMs = now
           localHit.copy(hits[0].point)
-          clothMesh.worldToLocal(localHit)
+          clothMesh.worldToLocal(localHit) // localHit persists between misses
+        }
+      }
+      // Stay "hovering" for a short grace period after the last hit (anti-flicker).
+      const hovering = pointerActive && now - lastHitMs < HIT_GRACE_MS
+
+      // Update the mouse-region indicator.
+      mouseSphere.visible = hovering
+      if (hovering) mouseSphere.position.copy(localHit)
+
+      // Ambient random wind is always on, applied along each vertex normal.
+      const ambientStrength = baseStrength * DEFAULT_WIND
+      windForce
+        .set(
+          Math.sin(now / 2000) * 1.5,
+          Math.cos(now / 3000) * 1.5,
+          -(Math.sin(now / 1000) + 0.6) * 0.4
+        )
+        .normalize()
+        .multiplyScalar(ambientStrength)
+
+      // Update the ambient wind direction indicator.
+      windDir.copy(windForce).normalize()
+      windArrow.setDirection(windDir)
+
+      const indices = clothGeometry.index
+      const normals = clothGeometry.attributes.normal
+      for (let i = 0, il = indices.count; i < il; i += 3) {
+        for (let j = 0; j < 3; j++) {
+          const idx = indices.getX(i + j)
+          normal.fromBufferAttribute(normals, idx)
+          tmpForce.copy(normal).normalize().multiplyScalar(normal.dot(windForce))
+          particles[idx].addForce(tmpForce)
         }
       }
 
+      // On top of the ambient wind, add a localized gust at the pointer.
       if (hovering) {
-        // Localized gust pushing the cloth away from the camera at the pointer.
         const strength = baseStrength * MOUSE_WIND
         const r2 = MOUSE_RADIUS * MOUSE_RADIUS
         for (let i = 0; i < particles.length; i++) {
@@ -210,28 +277,6 @@ const ClothScene = () => {
             const falloff = 1 - Math.sqrt(d2) / MOUSE_RADIUS
             tmpForce.set(0, 0, -1).multiplyScalar(strength * falloff)
             p.addForce(tmpForce)
-          }
-        }
-      } else {
-        // Ambient random wind, applied along each vertex normal.
-        const strength = baseStrength * DEFAULT_WIND
-        windForce
-          .set(
-            Math.sin(now / 2000),
-            Math.cos(now / 3000),
-            -(Math.sin(now / 1000) + 0.6)
-          )
-          .normalize()
-          .multiplyScalar(strength)
-
-        const indices = clothGeometry.index
-        const normals = clothGeometry.attributes.normal
-        for (let i = 0, il = indices.count; i < il; i += 3) {
-          for (let j = 0; j < 3; j++) {
-            const idx = indices.getX(i + j)
-            normal.fromBufferAttribute(normals, idx)
-            tmpForce.copy(normal).normalize().multiplyScalar(normal.dot(windForce))
-            particles[idx].addForce(tmpForce)
           }
         }
       }
@@ -295,6 +340,11 @@ const ClothScene = () => {
       clothGeometry.dispose()
       clothTexture.dispose()
       material.dispose()
+      windSphereGeo.dispose()
+      windSphereMat.dispose()
+      windArrow.dispose()
+      mouseSphereGeo.dispose()
+      mouseSphereMat.dispose()
       renderer.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
