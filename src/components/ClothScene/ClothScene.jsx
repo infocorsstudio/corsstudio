@@ -155,37 +155,37 @@ const ClothScene = () => {
     const clothMesh = new THREE.Mesh(clothGeometry, material)
     scene.add(clothMesh)
 
-    // --- Debug wireframe indicators ---
-    // Ambient wind direction (cyan): a small wireframe sphere + arrow.
-    const windIndicator = new THREE.Group()
-    const windSphereGeo = new THREE.SphereGeometry(20, 12, 8)
-    const windSphereMat = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      wireframe: true,
-    })
-    windIndicator.add(new THREE.Mesh(windSphereGeo, windSphereMat))
-    const windArrow = new THREE.ArrowHelper(
-      new THREE.Vector3(0, 0, -1),
-      new THREE.Vector3(0, 0, 0),
-      70,
-      0x00ffff
-    )
-    windIndicator.add(windArrow)
-    windIndicator.position.set(-clothWidth * 0.22, clothHeight * 0.5, 60)
-    scene.add(windIndicator)
+    // --- Debug wireframe indicators (temporarily disabled) ---
+    // // Ambient wind direction (cyan): a small wireframe sphere + arrow.
+    // const windIndicator = new THREE.Group()
+    // const windSphereGeo = new THREE.SphereGeometry(20, 12, 8)
+    // const windSphereMat = new THREE.MeshBasicMaterial({
+    //   color: 0x00ffff,
+    //   wireframe: true,
+    // })
+    // windIndicator.add(new THREE.Mesh(windSphereGeo, windSphereMat))
+    // const windArrow = new THREE.ArrowHelper(
+    //   new THREE.Vector3(0, 0, -1),
+    //   new THREE.Vector3(0, 0, 0),
+    //   70,
+    //   0x00ffff
+    // )
+    // windIndicator.add(windArrow)
+    // windIndicator.position.set(-clothWidth * 0.22, clothHeight * 0.5, 60)
+    // scene.add(windIndicator)
 
-    // Mouse-affected region (lime): wireframe sphere; child of the cloth so it
-    // inherits the cloth scale and matches the actual affected area.
-    const mouseSphereGeo = new THREE.SphereGeometry(MOUSE_RADIUS, 16, 12)
-    const mouseSphereMat = new THREE.MeshBasicMaterial({
-      color: 0x00ff00,
-      wireframe: true,
-      depthTest: false, // always draw on top, avoids z-fighting with the cloth
-      depthWrite: false,
-    })
-    const mouseSphere = new THREE.Mesh(mouseSphereGeo, mouseSphereMat)
-    mouseSphere.visible = false
-    clothMesh.add(mouseSphere)
+    // // Mouse-affected region (lime): wireframe sphere; child of the cloth so it
+    // // inherits the cloth scale and matches the actual affected area.
+    // const mouseSphereGeo = new THREE.SphereGeometry(MOUSE_RADIUS, 16, 12)
+    // const mouseSphereMat = new THREE.MeshBasicMaterial({
+    //   color: 0x00ff00,
+    //   wireframe: true,
+    //   depthTest: false, // always draw on top, avoids z-fighting with the cloth
+    //   depthWrite: false,
+    // })
+    // const mouseSphere = new THREE.Mesh(mouseSphereGeo, mouseSphereMat)
+    // mouseSphere.visible = false
+    // clothMesh.add(mouseSphere)
 
     const { particles, constraints } = buildCloth()
 
@@ -233,9 +233,9 @@ const ClothScene = () => {
       // Stay "hovering" for a short grace period after the last hit (anti-flicker).
       const hovering = pointerActive && now - lastHitMs < HIT_GRACE_MS
 
-      // Update the mouse-region indicator.
-      mouseSphere.visible = hovering
-      if (hovering) mouseSphere.position.copy(localHit)
+      // // Update the mouse-region indicator.
+      // mouseSphere.visible = hovering
+      // if (hovering) mouseSphere.position.copy(localHit)
 
       // Ambient random wind is always on, applied along each vertex normal.
       const ambientStrength = baseStrength * DEFAULT_WIND
@@ -248,9 +248,9 @@ const ClothScene = () => {
         .normalize()
         .multiplyScalar(ambientStrength)
 
-      // Update the ambient wind direction indicator.
-      windDir.copy(windForce).normalize()
-      windArrow.setDirection(windDir)
+      // // Update the ambient wind direction indicator.
+      // windDir.copy(windForce).normalize()
+      // windArrow.setDirection(windDir)
 
       const indices = clothGeometry.index
       const normals = clothGeometry.attributes.normal
@@ -340,11 +340,11 @@ const ClothScene = () => {
       clothGeometry.dispose()
       clothTexture.dispose()
       material.dispose()
-      windSphereGeo.dispose()
-      windSphereMat.dispose()
-      windArrow.dispose()
-      mouseSphereGeo.dispose()
-      mouseSphereMat.dispose()
+      // windSphereGeo.dispose()
+      // windSphereMat.dispose()
+      // windArrow.dispose()
+      // mouseSphereGeo.dispose()
+      // mouseSphereMat.dispose()
       renderer.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
