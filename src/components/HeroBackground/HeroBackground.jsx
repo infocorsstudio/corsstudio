@@ -10,6 +10,7 @@ const VIEW_H = 29.42
 
 const MAX_PARTICLES = 3500 // buffers are allocated for this many
 const TRAIL_MAX = 12 // max history samples per particle
+const TRAIL_RESET_MS = 80 // a longer gap means the model jumped; drop the trail
 const SEG_MAX = TRAIL_MAX - 1
 const LOGO_WORLD_WIDTH = 7 // world units the logo spans
 const THICKNESS = 0.12 // z depth of the particle cloud
@@ -262,17 +263,31 @@ const HeroBackground = () => {
       cachedTrailLen = trailLen
     }
 
-    // World-space position history ring, init at start positions
+    // World-space position history ring, init at the rotated start pose
+    // so the first frames don't connect unrotated points into long streaks.
     const history = new Float32Array(MAX_PARTICLES * TRAIL_MAX * 3)
+    const cos0 = Math.cos(INITIAL_ANGLE)
+    const sin0 = Math.sin(INITIAL_ANGLE)
     for (let i = 0; i < MAX_PARTICLES; i++) {
+      const fx = starts[i * 3]
+      const fy = starts[i * 3 + 1]
+      const fz = starts[i * 3 + 2]
+      const wx = fx * cos0 + fz * sin0 + MODEL_OFFSET_X
+      const wz = -fx * sin0 + fz * cos0
       for (let s = 0; s < TRAIL_MAX; s++) {
         const h3 = (i * TRAIL_MAX + s) * 3
-        history[h3] = starts[i * 3] + MODEL_OFFSET_X
-        history[h3 + 1] = starts[i * 3 + 1]
-        history[h3 + 2] = starts[i * 3 + 2]
+        history[h3] = wx
+        history[h3 + 1] = fy
+        history[h3 + 2] = wz
       }
     }
     let histHead = 0
+    let trailReset = false
+    let lastFrame = performance.now()
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') trailReset = true
+    }
+    document.addEventListener('visibilitychange', onVisibility)
 
     const resize = () => {
       const w = mount.clientWidth
@@ -338,7 +353,11 @@ const HeroBackground = () => {
       renderer.domElement.style.opacity =
         scatter.value > 0 ? String(1 - scatter.value) : ''
 
-      const t = (performance.now() - startTime) / 1000
+      const now = performance.now()
+      if (now - lastFrame > TRAIL_RESET_MS) trailReset = true
+      lastFrame = now
+
+      const t = (now - startTime) / 1000
       const a = INITIAL_ANGLE + t * 0.3
       const cosA = Math.cos(a)
       const sinA = Math.sin(a)
@@ -397,11 +416,24 @@ const HeroBackground = () => {
         arr[i3 + 1] = fy
         arr[i3 + 2] = fz
 
-        const h3 = (i * TRAIL_MAX + histHead) * 3
-        history[h3] = fx * cosA + fz * sinA + MODEL_OFFSET_X
-        history[h3 + 1] = fy
-        history[h3 + 2] = -fx * sinA + fz * cosA
+        const wx = fx * cosA + fz * sinA + MODEL_OFFSET_X
+        const wz = -fx * sinA + fz * cosA
+        if (trailReset) {
+          const base = i * TRAIL_MAX * 3
+          for (let s = 0; s < TRAIL_MAX; s++) {
+            const o = base + s * 3
+            history[o] = wx
+            history[o + 1] = fy
+            history[o + 2] = wz
+          }
+        } else {
+          const h3 = (i * TRAIL_MAX + histHead) * 3
+          history[h3] = wx
+          history[h3 + 1] = fy
+          history[h3 + 2] = wz
+        }
       }
+      trailReset = false
       posAttr.needsUpdate = true
       geometry.setDrawRange(0, count)
 
@@ -456,6 +488,7 @@ const HeroBackground = () => {
       cancelAnimationFrame(frameId)
       window.removeEventListener('resize', resize)
       window.removeEventListener('scroll', updateScatter)
+      document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pointermove', onPointerMove)
       mount.removeEventListener('pointerleave', onPointerLeave)
       geometry.dispose()

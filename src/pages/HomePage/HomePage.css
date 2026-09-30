@@ -39,6 +39,14 @@
   color: var(--color-theme);
 }
 
+.issue-apply {
+  align-self: flex-start;
+  padding: var(--gap-xxs) var(--gap-s);
+  color: var(--color-text);
+  text-decoration: none;
+  border: 1px solid var(--color-text);
+}
+
 .home-hero {
   position: relative;
 }

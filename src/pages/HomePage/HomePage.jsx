@@ -100,6 +100,14 @@ const HomePage = () => {
             boundary, to cross it, and to attend to what has been left behind.
           </p>
           <p>Open calls for each section will be announced in due course.</p>
+          <a
+            className="issue-apply"
+            href="about:blank"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Apply Now
+          </a>
         </div>
       </section>
     </div>
