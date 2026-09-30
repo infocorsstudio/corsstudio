@@ -12,6 +12,55 @@ const navItems = [
 
 const Header = () => {
   const location = useLocation()
+  const isHome = location.pathname === '/'
+
+  // Home only: center logo stays hidden on the hero, then fades in as section 2
+  // travels from 30% of the viewport to the top. Same per-frame inertia as the
+  // particle scatter (anime.js sync 0.4).
+  useEffect(() => {
+    const center = document.getElementById('navCenter')
+    if (!center || !isHome) return
+
+    const target = { value: 0 }
+    const current = { value: 0 }
+    let frameId = 0
+    let running = false
+    const step = 0.01 + 0.19 * 0.4
+
+    const updateTarget = () => {
+      const section2 = document.querySelector('.home-section-2')
+      if (!section2) return
+      const top = section2.getBoundingClientRect().top
+      const start = window.innerHeight * 0.3
+      target.value = Math.min(Math.max((start - top) / start, 0), 1)
+    }
+
+    const tick = () => {
+      current.value += (target.value - current.value) * step
+      if (Math.abs(target.value - current.value) < 0.0005) {
+        current.value = target.value
+        running = false
+      }
+      center.style.opacity = String(current.value)
+      if (running) frameId = requestAnimationFrame(tick)
+    }
+
+    const kick = () => {
+      updateTarget()
+      if (!running) {
+        running = true
+        tick()
+      }
+    }
+
+    kick()
+    window.addEventListener('scroll', kick, { passive: true })
+    return () => {
+      cancelAnimationFrame(frameId)
+      window.removeEventListener('scroll', kick)
+      center.style.opacity = ''
+    }
+  }, [isHome])
 
   // Header entrance animation on route change
   useEffect(() => {
@@ -69,7 +118,7 @@ const Header = () => {
   }
 
   return (
-    <header id="header">
+    <header id="header" className={isHome ? 'header-home' : undefined}>
       <nav id="navbar">
         {/* Left: studio name, links back to home */}
         <Link

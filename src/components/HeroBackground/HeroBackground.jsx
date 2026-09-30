@@ -28,6 +28,11 @@ const SWIRL_SPEED = 1.4 // how fast repelled particles orbit the mouse
 const INITIAL_ANGLE_DEG = 275 // e.g. 30, 90, 180
 const INITIAL_ANGLE = (INITIAL_ANGLE_DEG * Math.PI) / 180
 
+const CAMERA_Z = 10
+const CAMERA_ZOOM_Z = 4 // z when the scatter finishes (smaller = closer)
+// Same inertia as the hero intro onScroll sync (0.4): lower = more lag
+const SCATTER_SYNC = 0.5
+
 // Subtle camera parallax following the mouse
 const PARALLAX_X = 0.05 // world units the camera drifts horizontally
 const PARALLAX_Y = 0.02 // world units the camera drifts vertically
@@ -141,7 +146,7 @@ const HeroBackground = () => {
 
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
-    camera.position.z = 10
+    camera.position.z = CAMERA_Z
 
     const renderer = new THREE.WebGLRenderer({ antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -292,6 +297,20 @@ const HeroBackground = () => {
     window.addEventListener('pointermove', onPointerMove)
     mount.addEventListener('pointerleave', onPointerLeave)
 
+    // Scatter, fade, and zoom once section 2's top travels from mid-viewport to the top.
+    // target is the raw scroll progress; scatter eases toward it each frame.
+    const scatterTarget = { value: 0 }
+    const scatter = { value: 0 }
+    const section2 = document.querySelector('.home-section-2')
+    const updateScatter = () => {
+      if (!section2) return
+      const top = section2.getBoundingClientRect().top
+      const start = window.innerHeight * 0.5
+      scatterTarget.value = Math.min(Math.max((start - top) / start, 0), 1)
+    }
+    updateScatter()
+    window.addEventListener('scroll', updateScatter, { passive: true })
+
     const posAttr = geometry.getAttribute('position')
     const repel = new Float32Array(MAX_PARTICLES * 3)
     const proj = new THREE.Vector3()
@@ -310,6 +329,15 @@ const HeroBackground = () => {
       material.opacity = cfg.opacity
       if (trailLen !== cachedTrailLen) buildDepthColor(trailLen)
 
+      // Anime.js sync smoothing: lerp factor is lerp(0.01, 0.2, sync) per frame.
+      const scatterStep = 0.01 + 0.19 * SCATTER_SYNC
+      scatter.value += (scatterTarget.value - scatter.value) * scatterStep
+      if (Math.abs(scatterTarget.value - scatter.value) < 0.0005) {
+        scatter.value = scatterTarget.value
+      }
+      renderer.domElement.style.opacity =
+        scatter.value > 0 ? String(1 - scatter.value) : ''
+
       const t = (performance.now() - startTime) / 1000
       const a = INITIAL_ANGLE + t * 0.3
       const cosA = Math.cos(a)
@@ -322,6 +350,7 @@ const HeroBackground = () => {
       const camTY = mouse.active ? mouse.y * PARALLAX_Y : 0
       camera.position.x += (camTX - camera.position.x) * PARALLAX_EASE
       camera.position.y += (camTY - camera.position.y) * PARALLAX_EASE
+      camera.position.z = CAMERA_Z + (CAMERA_ZOOM_Z - CAMERA_Z) * scatter.value
       camera.updateMatrixWorld() // keep projection fresh for repulsion below
 
       histHead = (histHead + 1) % TRAIL_MAX
@@ -332,7 +361,7 @@ const HeroBackground = () => {
           Math.max((t - ENTRANCE_DELAY - delays[i]) / GATHER_DURATION, 0),
           1
         )
-        const e = easeOut4(p)
+        const e = easeOut4(p) * (1 - scatter.value)
         const bx = starts[i3] + (targets[i3] - starts[i3]) * e
         const by = starts[i3 + 1] + (targets[i3 + 1] - starts[i3 + 1]) * e
         const bz = starts[i3 + 2] + (targets[i3 + 2] - starts[i3 + 2]) * e
@@ -426,6 +455,7 @@ const HeroBackground = () => {
     return () => {
       cancelAnimationFrame(frameId)
       window.removeEventListener('resize', resize)
+      window.removeEventListener('scroll', updateScatter)
       window.removeEventListener('pointermove', onPointerMove)
       mount.removeEventListener('pointerleave', onPointerLeave)
       geometry.dispose()

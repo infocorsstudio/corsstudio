@@ -18,6 +18,11 @@
     width: 100%;
 }
 
+/* On the home hero the center logo starts hidden; scroll fades it in. */
+#header.header-home #navCenter {
+    opacity: 0;
+}
+
 /* Center logo */
 #navCenter {
     position: absolute;

@@ -4,7 +4,7 @@ import { ParametricGeometry } from 'three/examples/jsm/geometries/ParametricGeom
 import './ClothScene.css'
 
 // Live-tunable defaults (exposed as debug controls)
-const DEFAULT_WIND = 0.1 // ambient wind strength (when pointer is away)
+const DEFAULT_WIND = 0.2 // ambient wind strength (when pointer is away)
 const MOUSE_WIND = 3 // localized wind strength at the pointer
 const MOUSE_RADIUS = 100 // local-space radius affected around the pointer hit
 const HIT_GRACE_MS = 150 // keep "hovering" this long after the last ray hit (anti-flicker)
@@ -191,7 +191,7 @@ const ClothScene = () => {
 
     const gravity = new THREE.Vector3(0, -GRAVITY, 0).multiplyScalar(MASS)
     const windForce = new THREE.Vector3()
-    const windDir = new THREE.Vector3()
+    // const windDir = new THREE.Vector3() // only used by the (disabled) wind indicator
     const tmpForce = new THREE.Vector3()
     const normal = new THREE.Vector3()
     const diff = new THREE.Vector3()

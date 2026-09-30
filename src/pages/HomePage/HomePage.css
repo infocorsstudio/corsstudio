@@ -1,7 +1,11 @@
-.home-hero,
-.home-section-2 {
+.home-hero {
   width: 100vw;
   height: 100vh;
+}
+
+.home-section-2 {
+  width: 100vw;
+  height: 300vh;
 }
 
 .home-section-3 {
@@ -39,7 +43,7 @@
   position: relative;
 }
 
-/* Wrapper handles positioning + scroll-out (anime.js controls transform/opacity) */
+/* Positioning only. Scroll-out is applied separately to the logo and the text. */
 .hero-intro-wrap {
   position: absolute;
   z-index: 1;
@@ -71,4 +75,10 @@
   width: 100%;
   height: auto;
   display: block;
+}
+
+.hero-intro-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
 }

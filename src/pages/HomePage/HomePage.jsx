@@ -12,27 +12,38 @@ const introParagraphs = [
 
 const HomePage = () => {
   useEffect(() => {
-    // Scroll-out: when the hero's bottom reaches the middle of the viewport,
-    // the intro slides to -x and fades out, synced to scroll.
-    const scroller = onScroll({
-      target: '.home-hero',
-      // format is '<container> <target>' with keywords start | center | end
-      enter: 'center end', // hero bottom reaches viewport center
-      leave: 'start end', // hero bottom reaches viewport top
-      sync: 0.4, // 0-1 smooth scroll: lower = more inertia / smoother lag
+    // Logo and text scroll out on their own bounds, not as one block.
+    // enter: element's bottom reaches viewport center
+    // leave: element's bottom reaches viewport top
+    const scrollOut = (selector) => {
+      const scroller = onScroll({
+        target: selector,
+        enter: 'center end',
+        leave: 'start end',
+        sync: 0.4,
+      })
+      const anim = animate(selector, {
+        x: '-110%',
+        opacity: 0,
+        ease: 'linear',
+        autoplay: scroller,
+      })
+      return { scroller, anim }
+    }
+
+    const logo = scrollOut('.hero-intro-logo')
+    const text = scrollOut('.hero-intro-text')
+
+    const id = requestAnimationFrame(() => {
+      logo.scroller.refresh()
+      text.scroller.refresh()
     })
-    const anim = animate('.hero-intro-wrap', {
-      x: '-110%',
-      opacity: 0,
-      ease: 'linear',
-      autoplay: scroller,
-    })
-    // Recompute thresholds once layout/images have settled
-    const id = requestAnimationFrame(() => scroller.refresh())
     return () => {
       cancelAnimationFrame(id)
-      anim.revert()
-      scroller.revert()
+      logo.anim.revert()
+      text.anim.revert()
+      logo.scroller.revert()
+      text.scroller.revert()
     }
   }, [])
 
@@ -47,9 +58,11 @@ const HomePage = () => {
               alt="CORS"
               className="hero-intro-logo"
             />
-            {introParagraphs.map((text, i) => (
-              <p key={i}>{text}</p>
-            ))}
+            <div className="hero-intro-text">
+              {introParagraphs.map((text, i) => (
+                <p key={i}>{text}</p>
+              ))}
+            </div>
           </div>
         </div>
       </section>
