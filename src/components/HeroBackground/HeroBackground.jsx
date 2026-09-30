@@ -295,7 +295,7 @@ const HeroBackground = () => {
     const posAttr = geometry.getAttribute('position')
     const repel = new Float32Array(MAX_PARTICLES * 3)
     const proj = new THREE.Vector3()
-    const clock = new THREE.Clock()
+    const startTime = performance.now()
     const GATHER_DURATION = 2.6
     const ENTRANCE_DELAY = 0.5 // wait before particles start gathering
     let frameId
@@ -310,7 +310,7 @@ const HeroBackground = () => {
       material.opacity = cfg.opacity
       if (trailLen !== cachedTrailLen) buildDepthColor(trailLen)
 
-      const t = clock.getElapsedTime()
+      const t = (performance.now() - startTime) / 1000
       const a = INITIAL_ANGLE + t * 0.3
       const cosA = Math.cos(a)
       const sinA = Math.sin(a)

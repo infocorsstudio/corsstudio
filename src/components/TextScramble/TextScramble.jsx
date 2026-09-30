@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { animate } from 'animejs'
 
-const TextScramble = ({ text, onAnimationStart, onAnimationEnd, trigger = 0 }) => {
+const TextScramble = ({ text, onAnimationStart, onAnimationEnd, trigger = 0, delay = 800 }) => {
   const [displayText, setDisplayText] = useState(text)
   const [isAnimating, setIsAnimating] = useState(false)
   const animationRef = useRef(null)
@@ -61,7 +61,7 @@ const TextScramble = ({ text, onAnimationStart, onAnimationEnd, trigger = 0 }) =
     animationRef.current = animate(progressRef.current, {
       value: 1,
       duration: duration,
-      delay: 800,
+      delay: delay,
 
       onUpdate: () => {
         updateDisplayText(progressRef.current.value)

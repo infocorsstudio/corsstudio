@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { animate, onScroll } from 'animejs'
 import './HomePage.css'
 import HeroBackground from '../../components/HeroBackground/HeroBackground'
 import ClothScene from '../../components/ClothScene/ClothScene'
@@ -9,14 +11,46 @@ const introParagraphs = [
 ]
 
 const HomePage = () => {
+  useEffect(() => {
+    // Scroll-out: when the hero's bottom reaches the middle of the viewport,
+    // the intro slides to -x and fades out, synced to scroll.
+    const scroller = onScroll({
+      target: '.home-hero',
+      // format is '<container> <target>' with keywords start | center | end
+      enter: 'center end', // hero bottom reaches viewport center
+      leave: 'start end', // hero bottom reaches viewport top
+      sync: 0.4, // 0-1 smooth scroll: lower = more inertia / smoother lag
+    })
+    const anim = animate('.hero-intro-wrap', {
+      x: '-110%',
+      opacity: 0,
+      ease: 'linear',
+      autoplay: scroller,
+    })
+    // Recompute thresholds once layout/images have settled
+    const id = requestAnimationFrame(() => scroller.refresh())
+    return () => {
+      cancelAnimationFrame(id)
+      anim.revert()
+      scroller.revert()
+    }
+  }, [])
+
   return (
     <div className="home-page">
       <section className="home-hero">
         <HeroBackground />
-        <div className="hero-intro">
-          {introParagraphs.map((text, i) => (
-            <p key={i}>{text}</p>
-          ))}
+        <div className="hero-intro-wrap">
+          <div className="hero-intro">
+            <img
+              src="/assets/icons/corslogo.svg"
+              alt="CORS"
+              className="hero-intro-logo"
+            />
+            {introParagraphs.map((text, i) => (
+              <p key={i}>{text}</p>
+            ))}
+          </div>
         </div>
       </section>
       <section className="home-section-2"></section>

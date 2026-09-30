@@ -2,3 +2,26 @@
   min-height: 100vh;
   width: 100%;
 }
+
+.magazine-hero {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.magazine-hero-text {
+  font-family: 'Inter', sans-serif;
+  font-size: var(--font-xxl);
+  font-weight: bold;
+  color: var(--color-theme);
+  opacity: 0;
+  animation: magazine-hero-fade 0.8s ease forwards;
+}
+
+@keyframes magazine-hero-fade {
+  to {
+    opacity: 1;
+  }
+}

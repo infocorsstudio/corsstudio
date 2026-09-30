@@ -39,15 +39,19 @@
   position: relative;
 }
 
-.hero-intro {
+/* Wrapper handles positioning + scroll-out (anime.js controls transform/opacity) */
+.hero-intro-wrap {
   position: absolute;
   z-index: 1;
   left: 0;
   bottom: 0;
   padding: var(--gap-s);
-  max-width: 40%;
+  max-width: 45%;
+}
+
+.hero-intro {
   font-family: 'Inter', sans-serif;
-  font-size: var(--font-xs);
+  font-size: var(--font-xxs);
   color: var(--color-theme);
   display: flex;
   flex-direction: column;
@@ -61,4 +65,10 @@
   to {
     opacity: 1;
   }
+}
+
+.hero-intro-logo {
+  width: 100%;
+  height: auto;
+  display: block;
 }
