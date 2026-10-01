@@ -1,0 +1,23 @@
+.hero-halftone {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.hero-halftone.is-ready {
+  animation: hero-halftone-fade 0.5s ease forwards;
+}
+
+@keyframes hero-halftone-fade {
+  to {
+    opacity: 1;
+  }
+}
+
+.hero-halftone canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

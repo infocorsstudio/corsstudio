@@ -1,16 +1,34 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { animate, onScroll } from 'animejs'
 import './HomePage.css'
+import HeroHalftone from '../../components/HeroHalftone/HeroHalftone'
 import HeroBackground from '../../components/HeroBackground/HeroBackground'
 import ClothScene from '../../components/ClothScene/ClothScene'
 
 const introParagraphs = [
-  'CORS Studio is an independent publishing and design studio founded by Yuehan Ma and Yichen Ji. We bring together writing, artwork, photography, and other print-based contributions from diverse creative voices.',
-  'We create publications as spaces for exchange, where different voices, disciplines, and ways of seeing can meet. By placing writing, art, and photography in conversation, we invite contributors and readers to discover connections that might otherwise remain unseen.',
-  'CORS Studio approaches publishing as a shared space for experimentation, exchange, and discovery. Rather than presenting a single fixed interpretation, each publication becomes a collective response shaped by the people who contribute to it.',
+  'CORS Studio is an independent creative studio founded by Yuehan Ma and Yichen Ji.',
+  'Working across design, publishing, and collaborative projects, we bring together different disciplines, perspectives, and creative practices.',
+  'From self-initiated publications to commissioned design work, we approach each project as a space for exchange, experimentation, and new connections.',
 ]
 
 const HomePage = () => {
+  const section3Ref = useRef(null)
+  const [showCloth, setShowCloth] = useState(false)
+
+  // Create the cloth WebGL context only once section 3's top reaches the
+  // bottom of the viewport, so shader compile stays off the opening frame.
+  useEffect(() => {
+    const section = section3Ref.current
+    if (!section) return
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return
+      setShowCloth(true)
+      observer.disconnect()
+    })
+    observer.observe(section)
+    return () => observer.disconnect()
+  }, [])
+
   useEffect(() => {
     // Logo and text scroll out on their own bounds, not as one block.
     // enter: element's bottom reaches viewport center
@@ -50,6 +68,7 @@ const HomePage = () => {
   return (
     <div className="home-page">
       <section className="home-hero">
+        <HeroHalftone />
         <HeroBackground />
         <div className="hero-intro-wrap">
           <div className="hero-intro">
@@ -67,9 +86,9 @@ const HomePage = () => {
         </div>
       </section>
       <section className="home-section-2"></section>
-      <section className="home-section-3">
+      <section className="home-section-3" ref={section3Ref}>
         <div className="cloth-canvas-wrap">
-          <ClothScene />
+          {showCloth && <ClothScene />}
         </div>
         <div className="issue-intro">
           <h2>CORS Issue 001 / Spring 2027</h2>

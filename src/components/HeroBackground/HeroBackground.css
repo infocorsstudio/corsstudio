@@ -4,6 +4,9 @@
   z-index: 0;
   pointer-events: none;
   opacity: 0;
+}
+
+.hero-background.is-ready {
   animation: hero-bg-fade 0.5s ease forwards;
 }
 

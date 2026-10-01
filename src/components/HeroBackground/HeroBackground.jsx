@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
+import { record } from '../../debug/perfLog'
 import './HeroBackground.css'
 
 // The CORS logo path (viewBox 64.3 x 29.42)
@@ -11,6 +12,11 @@ const VIEW_H = 29.42
 const MAX_PARTICLES = 3500 // buffers are allocated for this many
 const TRAIL_MAX = 12 // max history samples per particle
 const TRAIL_RESET_MS = 80 // a longer gap means the model jumped; drop the trail
+const WARMUP_FRAMES = 4 // compile shaders before the gather clock starts
+const MAX_FRAME_MS = 34 // a hitch must not skip the entrance animation
+const GATHER_DURATION = 2.6
+const ENTRANCE_DELAY = 0.5 // wait before particles start gathering
+const GATHER_DELAY_MAX = 0.8 // per-particle random delay, added on top of ENTRANCE_DELAY
 const SEG_MAX = TRAIL_MAX - 1
 const LOGO_WORLD_WIDTH = 7 // world units the logo spans
 const THICKNESS = 0.12 // z depth of the particle cloud
@@ -42,7 +48,7 @@ const PARALLAX_EASE = 0.05 // smoothing (smaller = slower follow)
 // Live-tunable defaults (exposed as debug sliders)
 const DEFAULTS = {
   trailLen: 5,
-  count: 1200,
+  count: 500,
   size: 0.1,
   opacity: 1,
   dodge: 0.04,
@@ -149,7 +155,7 @@ const HeroBackground = () => {
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
     camera.position.z = CAMERA_Z
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     mount.appendChild(renderer.domElement)
 
@@ -159,10 +165,12 @@ const HeroBackground = () => {
     const bgColor = new THREE.Color(
       styles.getPropertyValue('--color-background').trim() || '#fcfcfc'
     )
-    renderer.setClearColor(bgColor, 1)
+    renderer.setClearColor(bgColor, 0)
 
     // Allocate everything for MAX_PARTICLES; use draw ranges to show a subset.
+    const sampleStart = performance.now()
     const targets = sampleLogoPoints(MAX_PARTICLES)
+    record('logo-sample', performance.now() - sampleStart)
     const starts = new Float32Array(MAX_PARTICLES * 3)
     const delays = new Float32Array(MAX_PARTICLES)
     const spins = new Float32Array(MAX_PARTICLES)
@@ -173,7 +181,7 @@ const HeroBackground = () => {
       starts[i * 3] = (Math.random() - 0.5) * 24
       starts[i * 3 + 1] = (Math.random() - 0.5) * 18
       starts[i * 3 + 2] = (Math.random() - 0.5) * 18
-      delays[i] = Math.random() * 0.8
+      delays[i] = Math.random() * GATHER_DELAY_MAX
       spins[i] = (Math.random() * 2 - 1) * SWIRL_SPEED
       phases[i] = Math.random() * Math.PI * 2
       rotations[i] = Math.random() * Math.PI * 2
@@ -329,12 +337,13 @@ const HeroBackground = () => {
     const posAttr = geometry.getAttribute('position')
     const repel = new Float32Array(MAX_PARTICLES * 3)
     const proj = new THREE.Vector3()
-    const startTime = performance.now()
-    const GATHER_DURATION = 2.6
-    const ENTRANCE_DELAY = 0.5 // wait before particles start gathering
+    const gatherDoneAt = ENTRANCE_DELAY + GATHER_DELAY_MAX + GATHER_DURATION
+    let animTime = 0
+    let warmed = 0
     let frameId
 
     const animate = () => {
+      const frameStart = performance.now()
       const cfg = cfgRef.current
       const count = Math.min(cfg.count | 0, MAX_PARTICLES)
       const trailLen = Math.min(Math.max(cfg.trailLen | 0, 2), TRAIL_MAX)
@@ -354,10 +363,20 @@ const HeroBackground = () => {
         scatter.value > 0 ? String(1 - scatter.value) : ''
 
       const now = performance.now()
-      if (now - lastFrame > TRAIL_RESET_MS) trailReset = true
+      const frameMs = now - lastFrame
       lastFrame = now
+      if (frameMs > TRAIL_RESET_MS) trailReset = true
 
-      const t = (now - startTime) / 1000
+      // Hold the gather clock through shader warmup, and don't let one long
+      // frame skip ahead through the entrance.
+      if (warmed < WARMUP_FRAMES) {
+        warmed += 1
+        if (warmed === WARMUP_FRAMES) mount.classList.add('is-ready')
+      } else {
+        animTime += Math.min(frameMs, MAX_FRAME_MS)
+      }
+      const t = animTime / 1000
+      const interactionOn = t >= gatherDoneAt
       const a = INITIAL_ANGLE + t * 0.3
       const cosA = Math.cos(a)
       const sinA = Math.sin(a)
@@ -365,8 +384,8 @@ const HeroBackground = () => {
       const arr = posAttr.array
 
       // Camera parallax: drift toward the mouse, ease back to center on leave.
-      const camTX = mouse.active ? mouse.x * PARALLAX_X : 0
-      const camTY = mouse.active ? mouse.y * PARALLAX_Y : 0
+      const camTX = interactionOn && mouse.active ? mouse.x * PARALLAX_X : 0
+      const camTY = interactionOn && mouse.active ? mouse.y * PARALLAX_Y : 0
       camera.position.x += (camTX - camera.position.x) * PARALLAX_EASE
       camera.position.y += (camTY - camera.position.y) * PARALLAX_EASE
       camera.position.z = CAMERA_Z + (CAMERA_ZOOM_Z - CAMERA_Z) * scatter.value
@@ -388,7 +407,7 @@ const HeroBackground = () => {
         let ox = 0
         let oy = 0
         let oz = 0
-        if (mouse.active) {
+        if (interactionOn && mouse.active) {
           const wx = bx * cosA + bz * sinA + MODEL_OFFSET_X
           const wz = -bx * sinA + bz * cosA
           proj.set(wx, by, wz).project(camera)
@@ -480,6 +499,7 @@ const HeroBackground = () => {
 
       group.rotation.y = a
       renderer.render(scene, camera)
+      record('particles', performance.now() - frameStart)
       frameId = requestAnimationFrame(animate)
     }
     animate()

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
+import { record } from '../../debug/perfLog'
 import { ParametricGeometry } from 'three/examples/jsm/geometries/ParametricGeometry.js'
 import './ClothScene.css'
 
@@ -314,6 +315,7 @@ const ClothScene = () => {
     const positionAttribute = clothGeometry.attributes.position
 
     const animate = (now) => {
+      const frameStart = performance.now()
       // Height comes from the texture aspect ratio; scales from the TOP edge.
       const sy = autoScaleYRef.current
       clothMesh.scale.set(DEFAULT_CLOTH_SCALE_X, sy, 1)
@@ -328,6 +330,7 @@ const ClothScene = () => {
       clothGeometry.computeVertexNormals()
       clothGeometry.computeBoundingSphere() // keep raycasting in sync with the moving cloth
       renderer.render(scene, camera)
+      record('cloth', performance.now() - frameStart)
       frameId = requestAnimationFrame(animate)
     }
     animate(performance.now())
