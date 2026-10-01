@@ -7,7 +7,7 @@ const THIN = 0.8
 const THICK = 5
 const BLUR = 10
 
-const HeroHalftone = () => {
+const HeroHalftone = ({ text = true }) => {
   const canvasRef = useRef(null)
 
   // Fade out over the same scroll range as the particle scatter:
@@ -73,35 +73,38 @@ const HeroHalftone = () => {
       canvas.width = bw
       canvas.height = bh
 
-      const fontSize = Math.min(w * 0.22, h * 0.62)
-      const pad = Math.ceil(BLUR * 4)
-      const maskW = Math.min(bw, Math.ceil(fontSize * 4.4) + pad * 2)
-      const maskH = Math.min(bh, Math.ceil(fontSize * 1.4) + pad * 2)
-      const maskX = (bw - maskW) / 2
-      const maskY = (bh - maskH) / 2
+      let sample = () => 0
+      if (text) {
+        const fontSize = Math.min(w * 0.22, h * 0.62)
+        const pad = Math.ceil(BLUR * 4)
+        const maskW = Math.min(bw, Math.ceil(fontSize * 4.4) + pad * 2)
+        const maskH = Math.min(bh, Math.ceil(fontSize * 1.4) + pad * 2)
+        const maskX = (bw - maskW) / 2
+        const maskY = (bh - maskH) / 2
 
-      const mask = document.createElement('canvas')
-      mask.width = maskW
-      mask.height = maskH
-      const mctx = mask.getContext('2d')
-      mctx.fillStyle = '#000'
-      mctx.textAlign = 'center'
-      mctx.textBaseline = 'middle'
-      mctx.font = `800 ${fontSize}px Inter, sans-serif`
-      mctx.fillText('CORS', maskW / 2, maskH / 2)
+        const mask = document.createElement('canvas')
+        mask.width = maskW
+        mask.height = maskH
+        const mctx = mask.getContext('2d')
+        mctx.fillStyle = '#000'
+        mctx.textAlign = 'center'
+        mctx.textBaseline = 'middle'
+        mctx.font = `800 ${fontSize}px Inter, sans-serif`
+        mctx.fillText('CORS', maskW / 2, maskH / 2)
 
-      const blurred = document.createElement('canvas')
-      blurred.width = maskW
-      blurred.height = maskH
-      const bctx = blurred.getContext('2d', { willReadFrequently: true })
-      bctx.filter = `blur(${BLUR}px)`
-      bctx.drawImage(mask, 0, 0)
-      const maskPx = bctx.getImageData(0, 0, maskW, maskH).data
-      const sample = (x, y) => {
-        const px = Math.round(x - maskX)
-        const py = Math.round(y - maskY)
-        if (px < 0 || py < 0 || px >= maskW || py >= maskH) return 0
-        return maskPx[(py * maskW + px) * 4 + 3] / 255
+        const blurred = document.createElement('canvas')
+        blurred.width = maskW
+        blurred.height = maskH
+        const bctx = blurred.getContext('2d', { willReadFrequently: true })
+        bctx.filter = `blur(${BLUR}px)`
+        bctx.drawImage(mask, 0, 0)
+        const maskPx = bctx.getImageData(0, 0, maskW, maskH).data
+        sample = (x, y) => {
+          const px = Math.round(x - maskX)
+          const py = Math.round(y - maskY)
+          if (px < 0 || py < 0 || px >= maskW || py >= maskH) return 0
+          return maskPx[(py * maskW + px) * 4 + 3] / 255
+        }
       }
 
       const img = new ImageData(bw, bh)
@@ -161,7 +164,7 @@ const HeroHalftone = () => {
       })
     }
 
-    if (document.fonts.status === 'loaded') reveal()
+    if (!text || document.fonts.status === 'loaded') reveal()
     else document.fonts.ready.then(reveal)
 
     const onResize = () => {
@@ -173,7 +176,7 @@ const HeroHalftone = () => {
       alive = false
       window.removeEventListener('resize', onResize)
     }
-  }, [])
+  }, [text])
 
   return (
     <div className="hero-halftone">

@@ -1,4 +1,5 @@
 import './AboutPage.css'
+import HeroHalftone from '../../components/HeroHalftone/HeroHalftone'
 
 const aboutParagraphs = [
   'CORS Studio is an independent creative studio founded by Yuehan Ma and Yichen Ji.',
@@ -14,6 +15,7 @@ const aboutParagraphs = [
 const AboutPage = () => {
   return (
     <div className="about-page">
+      <HeroHalftone text={false} />
       <section className="about-section-1">
         <div className="about-intro">
           {aboutParagraphs.map((text, i) => (

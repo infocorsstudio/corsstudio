@@ -3,6 +3,8 @@
 }
 
 .about-section-1 {
+  position: relative;
+  z-index: 1;
   min-height: 100vh;
   width: 100%;
   display: flex;
@@ -12,10 +14,18 @@
 }
 
 .about-intro {
-  max-width: 40rem;
+  max-width: 60rem;
   display: flex;
   flex-direction: column;
   gap: var(--gap-s);
   font-family: 'Inter', sans-serif;
   font-size: var(--font-xs);
+  opacity: 0;
+  animation: about-intro-fade 0.6s ease forwards;
+}
+
+@keyframes about-intro-fade {
+  to {
+    opacity: 1;
+  }
 }

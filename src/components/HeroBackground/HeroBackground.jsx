@@ -48,7 +48,7 @@ const PARALLAX_EASE = 0.05 // smoothing (smaller = slower follow)
 // Live-tunable defaults (exposed as debug sliders)
 const DEFAULTS = {
   trailLen: 5,
-  count: 500,
+  count: 1000,
   size: 0.1,
   opacity: 1,
   dodge: 0.04,
