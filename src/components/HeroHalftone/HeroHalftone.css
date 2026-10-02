@@ -16,6 +16,31 @@
   }
 }
 
+.hero-halftone-mask {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.hero-halftone-mask,
+.hero-halftone-spin {
+  transform-origin: left bottom;
+  will-change: transform;
+}
+
+.hero-halftone-spin {
+  position: absolute;
+  inset: 0;
+}
+
 .hero-halftone-svg {
+  position: absolute;
+  inset: 0;
   display: block;
+}
+
+.hero-halftone-spin,
+.hero-halftone-svg {
+  width: 100%;
+  height: 100%;
 }

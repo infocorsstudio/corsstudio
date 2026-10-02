@@ -5,6 +5,7 @@ const LINE_GAP = 12
 const THIN = 0.8
 const THICK_FROM = 3
 const THICK_TO = 6
+const WORD_SCALE_TO = 2.5
 const GRAY = 229
 
 // Parallel 45° lines covering the viewport. Built once per resize.
@@ -146,9 +147,9 @@ const buildSweepArc = (w, h) => {
   }
 }
 
-// Cut each line into the pieces that sit inside the glyph.
-// Endpoints land on the outline so a round stroke cap can finish them.
-const clipLinesToGlyph = (lines, w, h, fontSize) => {
+// Raster of the unstretched CORS word. Horizontal stretch samples this
+// with an inverse scale, so the letter gets wider without moving the lines.
+const buildGlyphMask = (w, h, fontSize) => {
   const canvas = document.createElement('canvas')
   canvas.width = w
   canvas.height = h
@@ -158,13 +159,63 @@ const clipLinesToGlyph = (lines, w, h, fontSize) => {
   ctx.textBaseline = 'middle'
   ctx.fillStyle = '#fff'
   ctx.fillText('CORS', w / 2, h / 2)
-  const pixels = ctx.getImageData(0, 0, w, h).data
+  const measured = ctx.measureText('CORS')
+  const ascent = measured.actualBoundingBoxAscent || fontSize * 0.8
+  const descent = measured.actualBoundingBoxDescent || fontSize * 0.2
+  const pad = 8
+  const x = Math.max(0, Math.floor(w / 2 - measured.width / 2) - pad)
+  const y = Math.max(0, Math.floor(h / 2 - ascent) - pad)
+  const mw = Math.min(w - x, Math.ceil(measured.width) + pad * 2)
+  const mh = Math.min(h - y, Math.ceil(ascent + descent) + pad * 2)
+  return {
+    pixels: ctx.getImageData(x, y, mw, mh).data,
+    x,
+    y,
+    mw,
+    mh,
+    cx: w / 2,
+    cy: h / 2,
+  }
+}
 
-  const inside = (x, y) => {
-    const px = x | 0
-    const py = y | 0
-    if (px < 0 || py < 0 || px >= w || py >= h) return false
-    return pixels[(py * w + px) * 4 + 3] > 128
+// Cut each line into the pieces that sit inside the glyph.
+// scaleX widens the word around its center. Endpoints land on the outline.
+const clipLinesToGlyph = (lines, mask, scaleX) => {
+  const left = mask.cx + (mask.x - mask.cx) * scaleX
+  const right = mask.cx + (mask.x + mask.mw - mask.cx) * scaleX
+  const top = mask.y
+  const bottom = mask.y + mask.mh
+
+  const inside = (sx, sy) => {
+    const gx = mask.cx + (sx - mask.cx) / scaleX
+    const px = (gx - mask.x) | 0
+    const py = (sy - mask.y) | 0
+    if (px < 0 || py < 0 || px >= mask.mw || py >= mask.mh) return false
+    return mask.pixels[(py * mask.mw + px) * 4 + 3] > 128
+  }
+
+  const overlap = (x1, y1, x2, y2) => {
+    let t0 = 0
+    let t1 = 1
+    const dx = x2 - x1
+    const dy = y2 - y1
+    const p = [-dx, dx, -dy, dy]
+    const q = [x1 - left, right - x1, y1 - top, bottom - y1]
+    for (let i = 0; i < 4; i++) {
+      if (p[i] === 0) {
+        if (q[i] < 0) return null
+      } else {
+        const r = q[i] / p[i]
+        if (p[i] < 0) {
+          if (r > t1) return null
+          if (r > t0) t0 = r
+        } else {
+          if (r < t0) return null
+          if (r < t1) t1 = r
+        }
+      }
+    }
+    return t0 < t1 ? [t0, t1] : null
   }
 
   const boundary = (outside, insidePt) => {
@@ -180,13 +231,20 @@ const clipLinesToGlyph = (lines, w, h, fontSize) => {
 
   const segments = []
   for (const line of lines) {
-    const dx = line.x2 - line.x1
-    const dy = line.y2 - line.y1
+    const span = overlap(line.x1, line.y1, line.x2, line.y2)
+    if (!span) continue
+    const [t0, t1] = span
+    const x1 = line.x1 + (line.x2 - line.x1) * t0
+    const y1 = line.y1 + (line.y2 - line.y1) * t0
+    const x2 = line.x1 + (line.x2 - line.x1) * t1
+    const y2 = line.y1 + (line.y2 - line.y1) * t1
+    const dx = x2 - x1
+    const dy = y2 - y1
     const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy)))
     let prev = null
     let run = null
     for (let i = 0; i <= steps; i++) {
-      const p = { x: line.x1 + (dx * i) / steps, y: line.y1 + (dy * i) / steps }
+      const p = { x: x1 + (dx * i) / steps, y: y1 + (dy * i) / steps }
       const on = inside(p.x, p.y)
       if (on && !run) {
         run = prev ? boundary(prev, p) : p
@@ -220,7 +278,8 @@ const HeroHalftone = ({ text = true }) => {
   const thinRef = useRef(null)
   const thickRef = useRef(null)
   const pointRef = useRef(null)
-  const arcRef = useRef(null)
+  const maskRef = useRef(null)
+  const spinRef = useRef(null)
   const markerId = useId().replace(/:/g, '')
   const [box, setBox] = useState(null)
 
@@ -235,12 +294,14 @@ const HeroHalftone = ({ text = true }) => {
       if (!w || !h) return
       const fontSize = Math.min(w * 0.22, h * 0.62)
       const lines = buildLines(w, h)
+      const glyph = text ? buildGlyphMask(w, h, fontSize) : null
       setBox({
         w,
         h,
         fontSize,
         lines,
-        thickLines: text ? clipLinesToGlyph(lines, w, h, fontSize) : lines,
+        glyph,
+        thickLines: glyph ? clipLinesToGlyph(lines, glyph, 1) : lines,
         sweep: buildSweepArc(w, h),
       })
     }
@@ -264,25 +325,53 @@ const HeroHalftone = ({ text = true }) => {
   }, [text])
 
   // All ranges are driven by where section 2 sits in the viewport.
-  // Color: section 2 top travels from mid-viewport to the top of the screen.
-  // Thickness: section 2 bottom travels from 80% to 45%.
-  // Thick layer fades out as the bottom travels from 50% to 40%.
-  // The closed shape clips the thin diagonals: only the part inside it shows.
+  // Color and thickness growth: section 2 top travels from mid-viewport to the top.
+  // The word keeps stretching until section 2's bottom reaches the top of the screen.
+  // The lines themselves stay put.
+  // Thick lines then thin out as section 2 bottom travels from 70% to 30%.
+  // The closed shape clips both line layers: only the part inside it shows.
   // Its left endpoint stays on the bottom-left corner. It starts at the
   // thumbnail's angle, then rotates counterclockwise while section 2's bottom
-  // travels from 60% to 10%.
+  // travels from 55% to 5%.
   useEffect(() => {
     const section2 = document.querySelector('.home-section-2')
     const tracks = {
       color: { target: 0, current: 0 },
+      word: { target: 0, current: 0 },
       thick: { target: 0, current: 0 },
-      fade: { target: 0, current: 0 },
       retract: { target: 0, current: 0 },
     }
     let frameId = 0
     let running = false
     const step = 0.01 + 0.19 * 0.5
     const theme = themeColor()
+    let lastColor = ''
+    let lastThick = -1
+    let lastScale = -1
+    let lastDeg = null
+
+    const paintWord = (scaleX) => {
+      const g = thickRef.current
+      if (!g || !box?.glyph) return
+      const segments = clipLinesToGlyph(box.lines, box.glyph, scaleX)
+      const start = `url(#${markerId}-start)`
+      const end = `url(#${markerId}-end)`
+      while (g.children.length > segments.length) g.removeChild(g.lastChild)
+      for (let i = 0; i < segments.length; i++) {
+        let node = g.children[i]
+        if (!node) {
+          node = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+          node.setAttribute('marker-start', start)
+          node.setAttribute('marker-end', end)
+          g.appendChild(node)
+        }
+        const s = segments[i]
+        node.setAttribute('x1', s.x1)
+        node.setAttribute('y1', s.y1)
+        node.setAttribute('x2', s.x2)
+        node.setAttribute('y2', s.y2)
+      }
+    }
 
     const alongBottom = (bottom, startRatio, endRatio) => {
       const start = window.innerHeight * startRatio
@@ -292,29 +381,41 @@ const HeroHalftone = ({ text = true }) => {
 
     const apply = () => {
       const colorU = tracks.color.current
-      const thick = THICK_FROM + (THIN - THICK_FROM) * tracks.thick.current
+      const grown = THICK_FROM + (THICK_TO - THICK_FROM) * colorU
+      const thick = grown + (THIN - grown) * tracks.thick.current
       const r = GRAY + (theme[0] - GRAY) * colorU
       const g = GRAY + (theme[1] - GRAY) * colorU
       const b = GRAY + (theme[2] - GRAY) * colorU
       const color = `rgb(${r | 0},${g | 0},${b | 0})`
-      if (thickRef.current) {
-        thickRef.current.setAttribute('stroke-width', String(thick))
+      if (box?.glyph) {
+        const scaleX = 1 + (WORD_SCALE_TO - 1) * tracks.word.current
+        if (Math.abs(scaleX - lastScale) > 0.008) {
+          paintWord(scaleX)
+          lastScale = scaleX
+        }
+      }
+      if (thickRef.current && (color !== lastColor || Math.abs(thick - lastThick) > 0.02)) {
+        thickRef.current.setAttribute('stroke-width', thick.toFixed(2))
         thickRef.current.setAttribute('stroke', color)
-        thickRef.current.style.opacity = String(1 - tracks.fade.current)
+        lastThick = thick
       }
-      if (thinRef.current) thinRef.current.setAttribute('stroke', color)
-      if (pointRef.current) {
-        pointRef.current.querySelectorAll('polygon').forEach((polygon) => {
-          polygon.setAttribute('fill', color)
-        })
+      if (color !== lastColor) {
+        if (thinRef.current) thinRef.current.setAttribute('stroke', color)
+        if (pointRef.current) {
+          pointRef.current.querySelectorAll('polygon').forEach((polygon) => {
+            polygon.setAttribute('fill', color)
+          })
+        }
+        lastColor = color
       }
-      if (arcRef.current && box) {
+      if (maskRef.current && spinRef.current && box) {
         const { fromDeg, toDeg } = box.sweep
         const deg = fromDeg + (toDeg - fromDeg) * tracks.retract.current
-        arcRef.current.setAttribute(
-          'transform',
-          `translate(0 ${box.h}) rotate(${deg}) translate(0 ${-box.h})`
-        )
+        if (lastDeg === null || Math.abs(deg - lastDeg) > 0.05) {
+          maskRef.current.style.transform = `rotate(${deg}deg)`
+          spinRef.current.style.transform = `rotate(${-deg}deg)`
+          lastDeg = deg
+        }
       }
     }
 
@@ -323,9 +424,13 @@ const HeroHalftone = ({ text = true }) => {
       const rect = section2.getBoundingClientRect()
       const colorStart = window.innerHeight * 0.5
       tracks.color.target = Math.min(Math.max((colorStart - rect.top) / colorStart, 0), 1)
-      tracks.thick.target = alongBottom(rect.bottom, 0.8, 0.45)
-      tracks.fade.target = alongBottom(rect.bottom, 0.5, 0.4)
-      tracks.retract.target = alongBottom(rect.bottom, 0.6, 0.1)
+      const wordEnd = -rect.height
+      tracks.word.target = Math.min(
+        Math.max((colorStart - rect.top) / (colorStart - wordEnd), 0),
+        1
+      )
+      tracks.thick.target = alongBottom(rect.bottom, 0.7, 0.3)
+      tracks.retract.target = alongBottom(rect.bottom, 0.55, 0.05)
     }
 
     const tick = () => {
@@ -360,20 +465,28 @@ const HeroHalftone = ({ text = true }) => {
   return (
     <div ref={rootRef} className="hero-halftone">
       {box && (
-        <svg
-          className="hero-halftone-svg"
-          viewBox={`0 0 ${box.w} ${box.h}`}
-          width={box.w}
-          height={box.h}
+        <>
+        <div
+          ref={maskRef}
+          className="hero-halftone-mask"
+          style={{ clipPath: `path('${box.sweep.d}')` }}
         >
+          <div ref={spinRef} className="hero-halftone-spin">
+            <svg className="hero-halftone-svg" viewBox={`0 0 ${box.w} ${box.h}`}>
+              <g
+                ref={thinRef}
+                className="hero-halftone-thin"
+                fill="none"
+                stroke={`rgb(${GRAY},${GRAY},${GRAY})`}
+                strokeWidth={THIN}
+              >
+                {box.lines.map((line, i) => (
+                  <line key={i} x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} />
+                ))}
+              </g>
+            </svg>
+            <svg className="hero-halftone-svg" viewBox={`0 0 ${box.w} ${box.h}`}>
           <defs ref={pointRef}>
-            <clipPath id={`${markerId}-sweep`} clipPathUnits="userSpaceOnUse">
-              <path
-                ref={arcRef}
-                d={box.sweep.d}
-                transform={`translate(0 ${box.h}) rotate(${box.sweep.fromDeg}) translate(0 ${-box.h})`}
-              />
-            </clipPath>
             <marker
               id={`${markerId}-end`}
               markerUnits="strokeWidth"
@@ -399,20 +512,6 @@ const HeroHalftone = ({ text = true }) => {
               <polygon points="0,0 -4,0.5 0,1" fill={`rgb(${GRAY},${GRAY},${GRAY})`} />
             </marker>
           </defs>
-          <g clipPath={`url(#${markerId}-sweep)`}>
-          <g
-            ref={thinRef}
-            className="hero-halftone-thin"
-            fill="none"
-            stroke={`rgb(${GRAY},${GRAY},${GRAY})`}
-            strokeWidth={THIN}
-          >
-            {box.lines.map((line, i) => (
-              <line key={i} x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} />
-            ))}
-          </g>
-          </g>
-
           <g
             ref={thickRef}
             className="hero-halftone-thick"
@@ -433,7 +532,10 @@ const HeroHalftone = ({ text = true }) => {
               />
             ))}
           </g>
-        </svg>
+            </svg>
+          </div>
+        </div>
+        </>
       )}
     </div>
   )
