@@ -12,13 +12,13 @@ const introParagraphs = [
 ]
 
 const HomePage = () => {
-  const section3Ref = useRef(null)
+  const currentEventRef = useRef(null)
   const [showCloth, setShowCloth] = useState(false)
 
-  // Create the cloth WebGL context only once section 3's top reaches the
-  // bottom of the viewport, so shader compile stays off the opening frame.
+  // Create the cloth WebGL context only once the current event's top reaches
+  // the bottom of the viewport, so shader compile stays off the opening frame.
   useEffect(() => {
-    const section = section3Ref.current
+    const section = currentEventRef.current
     if (!section) return
     const observer = new IntersectionObserver((entries) => {
       if (!entries.some((entry) => entry.isIntersecting)) return
@@ -86,7 +86,9 @@ const HomePage = () => {
         </div>
       </section>
       <section className="home-section-2"></section>
-      <section className="home-section-3" ref={section3Ref}>
+      <section className="home-section-3"></section>
+      <section className="home-section-4"></section>
+      <section className="current-event" ref={currentEventRef}>
         <div className="cloth-canvas-wrap">
           {showCloth && <ClothScene />}
         </div>

@@ -1,16 +1,13 @@
-.home-hero {
+.home-hero,
+.home-section-2,
+.home-section-3,
+.home-section-4,
+.current-event {
   width: 100vw;
   height: 100vh;
 }
 
-.home-section-2 {
-  width: 100vw;
-  height: 300vh;
-}
-
-.home-section-3 {
-  width: 100vw;
-  height: 100vh;
+.current-event {
   display: flex;
   flex-direction: row;
 }
