@@ -38,115 +38,6 @@ const buildLines = (w, h) => {
   return lines
 }
 
-// Same smoothing as the hero intro scroll (anime.js sync: 0.4).
-const INTRO_INERTIA = 0.01 + 0.19 * 0.4
-
-// Closed shape: three sides of a square, with the bottom side replaced by the arc.
-// The left endpoint sits on the screen's bottom-left corner.
-// Angle 0 is the thumbnail orientation: the arc hangs below the screen.
-const SWEEP_CLEAR = 8
-const buildSweepArc = (w, h) => {
-  const rawStart = { x: -w * 0.2, y: h * 0.42 }
-  const rawMid = { x: w * 0.5, y: h * 1.15 }
-  const rawEnd = { x: w * 1.12, y: h * 0.36 }
-  const shiftX = -rawStart.x
-  const shiftY = h - rawStart.y
-  const start = { x: 0, y: h }
-  const mid = { x: rawMid.x + shiftX, y: rawMid.y + shiftY }
-  const end = { x: rawEnd.x + shiftX, y: rawEnd.y + shiftY }
-  const det =
-    2 * (start.x * (mid.y - end.y) + mid.x * (end.y - start.y) + end.x * (start.y - mid.y))
-  const cx =
-    ((start.x ** 2 + start.y ** 2) * (mid.y - end.y) +
-      (mid.x ** 2 + mid.y ** 2) * (end.y - start.y) +
-      (end.x ** 2 + end.y ** 2) * (start.y - mid.y)) /
-    det
-  const cy =
-    ((start.x ** 2 + start.y ** 2) * (end.x - mid.x) +
-      (mid.x ** 2 + mid.y ** 2) * (start.x - end.x) +
-      (end.x ** 2 + end.y ** 2) * (mid.x - start.x)) /
-    det
-  const r = Math.hypot(start.x - cx, start.y - cy)
-  const ang = (p) => Math.atan2(p.y - cy, p.x - cx)
-  const turn = (from, to) => {
-    let delta = to - from
-    while (delta < 0) delta += Math.PI * 2
-    while (delta >= Math.PI * 2) delta -= Math.PI * 2
-    return delta
-  }
-  const a0 = ang(start)
-  const a1 = ang(end)
-  const am = ang(mid)
-  const clockwise = turn(a0, am) <= turn(a0, a1)
-  const span = clockwise ? turn(a0, a1) : turn(a1, a0)
-  const large = span > Math.PI ? 1 : 0
-  const sweep = clockwise ? 1 : 0
-  const chordX = end.x - start.x
-  const chordY = end.y - start.y
-  const side = Math.hypot(chordX, chordY)
-  let upX = -chordY
-  let upY = chordX
-  if (upX * (mid.x - start.x) + upY * (mid.y - start.y) > 0) {
-    upX = -upX
-    upY = -upY
-  }
-  const upLen = Math.hypot(upX, upY) || 1
-  upX = (upX / upLen) * side
-  upY = (upY / upLen) * side
-  const topLeft = { x: start.x + upX, y: start.y + upY }
-  const topRight = { x: end.x + upX, y: end.y + upY }
-  const samples = []
-  for (let i = 0; i <= 48; i++) {
-    const t = clockwise ? a0 + (span * i) / 48 : a0 - (span * i) / 48
-    samples.push({ x: cx + r * Math.cos(t), y: cy + r * Math.sin(t) })
-  }
-  for (let i = 1; i <= 16; i++) {
-    const t = i / 16
-    samples.push({
-      x: end.x + (topRight.x - end.x) * t,
-      y: end.y + (topRight.y - end.y) * t,
-    })
-    samples.push({
-      x: topRight.x + (topLeft.x - topRight.x) * t,
-      y: topRight.y + (topLeft.y - topRight.y) * t,
-    })
-    samples.push({
-      x: topLeft.x + (start.x - topLeft.x) * t,
-      y: topLeft.y + (start.y - topLeft.y) * t,
-    })
-  }
-  const hits = (deg) => {
-    const th = (deg * Math.PI) / 180
-    const c = Math.cos(th)
-    const s = Math.sin(th)
-    return samples.some((p, index) => {
-      if (index === 0) return false
-      const rx = p.x
-      const ry = p.y - h
-      const x = rx * c - ry * s
-      const y = rx * s + ry * c + h
-      if (Math.hypot(x, y - h) < 2) return false
-      return x >= 0 && x <= w && y >= 0 && y <= h
-    })
-  }
-  // How far counterclockwise the shape must turn before it leaves the screen again.
-  const firstClear = () => {
-    let lo = 0
-    let hi = 360
-    while (hi - lo > 0.25) {
-      const midDeg = (lo + hi) / 2
-      if (hits(-midDeg)) lo = midDeg
-      else hi = midDeg
-    }
-    return -(hi + SWEEP_CLEAR)
-  }
-  return {
-    d: `M ${start.x} ${start.y} A ${r} ${r} 0 ${large} ${sweep} ${end.x} ${end.y} L ${topRight.x} ${topRight.y} L ${topLeft.x} ${topLeft.y} Z`,
-    fromDeg: 0,
-    toDeg: firstClear(),
-  }
-}
-
 // Raster of the unstretched CORS word. Horizontal stretch samples this
 // with an inverse scale, so the letter gets wider without moving the lines.
 const buildGlyphMask = (w, h, fontSize) => {
@@ -275,11 +166,8 @@ const themeColor = () => {
 
 const HeroHalftone = ({ text = true }) => {
   const rootRef = useRef(null)
-  const thinRef = useRef(null)
   const thickRef = useRef(null)
   const pointRef = useRef(null)
-  const maskRef = useRef(null)
-  const spinRef = useRef(null)
   const markerId = useId().replace(/:/g, '')
   const [box, setBox] = useState(null)
 
@@ -302,7 +190,6 @@ const HeroHalftone = ({ text = true }) => {
         lines,
         glyph,
         thickLines: glyph ? clipLinesToGlyph(lines, glyph, 1) : lines,
-        sweep: buildSweepArc(w, h),
       })
     }
 
@@ -329,17 +216,12 @@ const HeroHalftone = ({ text = true }) => {
   // The word keeps stretching until section 2's bottom reaches the top of the screen.
   // The lines themselves stay put.
   // Thick lines then thin out as section 2 bottom travels from 70% to 30%.
-  // The closed shape clips both line layers: only the part inside it shows.
-  // Its left endpoint stays on the bottom-left corner. It starts at the
-  // thumbnail's angle, then rotates counterclockwise while section 2's bottom
-  // travels from 55% to 5%.
   useEffect(() => {
     const section2 = document.querySelector('.home-section-2')
     const tracks = {
       color: { target: 0, current: 0 },
       word: { target: 0, current: 0 },
       thick: { target: 0, current: 0 },
-      retract: { target: 0, current: 0 },
     }
     let frameId = 0
     let running = false
@@ -348,7 +230,6 @@ const HeroHalftone = ({ text = true }) => {
     let lastColor = ''
     let lastThick = -1
     let lastScale = -1
-    let lastDeg = null
 
     const paintWord = (scaleX) => {
       const g = thickRef.current
@@ -400,22 +281,12 @@ const HeroHalftone = ({ text = true }) => {
         lastThick = thick
       }
       if (color !== lastColor) {
-        if (thinRef.current) thinRef.current.setAttribute('stroke', color)
         if (pointRef.current) {
           pointRef.current.querySelectorAll('polygon').forEach((polygon) => {
             polygon.setAttribute('fill', color)
           })
         }
         lastColor = color
-      }
-      if (maskRef.current && spinRef.current && box) {
-        const { fromDeg, toDeg } = box.sweep
-        const deg = fromDeg + (toDeg - fromDeg) * tracks.retract.current
-        if (lastDeg === null || Math.abs(deg - lastDeg) > 0.05) {
-          maskRef.current.style.transform = `rotate(${deg}deg)`
-          spinRef.current.style.transform = `rotate(${-deg}deg)`
-          lastDeg = deg
-        }
       }
     }
 
@@ -430,14 +301,12 @@ const HeroHalftone = ({ text = true }) => {
         1
       )
       tracks.thick.target = alongBottom(rect.bottom, 0.7, 0.3)
-      tracks.retract.target = alongBottom(rect.bottom, 0.55, 0.05)
     }
 
     const tick = () => {
       let settled = true
-      for (const [name, track] of Object.entries(tracks)) {
-        const blend = name === 'retract' ? INTRO_INERTIA : step
-        track.current += (track.target - track.current) * blend
+      for (const track of Object.values(tracks)) {
+        track.current += (track.target - track.current) * step
         if (Math.abs(track.target - track.current) < 0.0005) track.current = track.target
         else settled = false
       }
@@ -465,27 +334,7 @@ const HeroHalftone = ({ text = true }) => {
   return (
     <div ref={rootRef} className="hero-halftone">
       {box && (
-        <>
-        <div
-          ref={maskRef}
-          className="hero-halftone-mask"
-          style={{ clipPath: `path('${box.sweep.d}')` }}
-        >
-          <div ref={spinRef} className="hero-halftone-spin">
-            <svg className="hero-halftone-svg" viewBox={`0 0 ${box.w} ${box.h}`}>
-              <g
-                ref={thinRef}
-                className="hero-halftone-thin"
-                fill="none"
-                stroke={`rgb(${GRAY},${GRAY},${GRAY})`}
-                strokeWidth={THIN}
-              >
-                {box.lines.map((line, i) => (
-                  <line key={i} x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} />
-                ))}
-              </g>
-            </svg>
-            <svg className="hero-halftone-svg" viewBox={`0 0 ${box.w} ${box.h}`}>
+        <svg className="hero-halftone-svg" viewBox={`0 0 ${box.w} ${box.h}`}>
           <defs ref={pointRef}>
             <marker
               id={`${markerId}-end`}
@@ -532,10 +381,7 @@ const HeroHalftone = ({ text = true }) => {
               />
             ))}
           </g>
-            </svg>
-          </div>
-        </div>
-        </>
+        </svg>
       )}
     </div>
   )
