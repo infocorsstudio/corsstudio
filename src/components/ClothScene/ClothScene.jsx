@@ -30,6 +30,10 @@ const clothHeight = restDistance * ySegs
 const GRAVITY = 981 * 1.4
 const TIMESTEP = 18 / 1000
 const TIMESTEP_SQ = TIMESTEP * TIMESTEP
+// One integration per frame runs the wind faster as the display refresh rises.
+// Step the sim on a fixed 60Hz clock; rendering still follows the display.
+const STEP_MS = 1000 / 60
+const MAX_FRAME_MS = STEP_MS * 3
 
 // Plane centered on the origin so the camera can face it head-on.
 const clothFunction = (u, v, target) => {
@@ -313,6 +317,10 @@ const ClothScene = () => {
 
     let frameId
     const positionAttribute = clothGeometry.attributes.position
+    let clockReady = false
+    let lastFrame = 0
+    let simTime = 0
+    let accumulator = 0
 
     const animate = (now) => {
       const frameStart = performance.now()
@@ -321,7 +329,20 @@ const ClothScene = () => {
       clothMesh.scale.set(DEFAULT_CLOTH_SCALE_X, sy, 1)
       clothMesh.position.y = TOP_ANCHOR_Y - ((sy - 1) * clothHeight) / 2
 
-      simulate(now)
+      if (!clockReady) {
+        clockReady = true
+        lastFrame = now
+        simTime = now
+      } else {
+        const frameDelta = Math.min(Math.max(now - lastFrame, 0), MAX_FRAME_MS)
+        lastFrame = now
+        accumulator += frameDelta
+        while (accumulator >= STEP_MS) {
+          simTime += STEP_MS
+          simulate(simTime)
+          accumulator -= STEP_MS
+        }
+      }
       for (let i = 0; i < particles.length; i++) {
         const v = particles[i].position
         positionAttribute.setXYZ(i, v.x, v.y, v.z)

@@ -166,6 +166,7 @@ const themeColor = () => {
 
 const HeroHalftone = ({ text = true }) => {
   const rootRef = useRef(null)
+  const svgRef = useRef(null)
   const thickRef = useRef(null)
   const pointRef = useRef(null)
   const markerId = useId().replace(/:/g, '')
@@ -216,12 +217,14 @@ const HeroHalftone = ({ text = true }) => {
   // The word keeps stretching until section 2's bottom reaches the top of the screen.
   // The lines themselves stay put.
   // Thick lines then thin out as section 2 bottom travels from 70% to 30%.
+  // The drawing fades out as section 2 bottom travels from 40% to the top.
   useEffect(() => {
     const section2 = document.querySelector('.home-section-2')
     const tracks = {
       color: { target: 0, current: 0 },
       word: { target: 0, current: 0 },
       thick: { target: 0, current: 0 },
+      fade: { target: 0, current: 0 },
     }
     let frameId = 0
     let running = false
@@ -230,6 +233,7 @@ const HeroHalftone = ({ text = true }) => {
     let lastColor = ''
     let lastThick = -1
     let lastScale = -1
+    let lastOpacity = ''
 
     const paintWord = (scaleX) => {
       const g = thickRef.current
@@ -288,6 +292,13 @@ const HeroHalftone = ({ text = true }) => {
         }
         lastColor = color
       }
+      if (svgRef.current) {
+        const opacity = (1 - tracks.fade.current).toFixed(3)
+        if (opacity !== lastOpacity) {
+          svgRef.current.style.opacity = opacity
+          lastOpacity = opacity
+        }
+      }
     }
 
     const updateTarget = () => {
@@ -301,6 +312,7 @@ const HeroHalftone = ({ text = true }) => {
         1
       )
       tracks.thick.target = alongBottom(rect.bottom, 0.7, 0.3)
+      tracks.fade.target = alongBottom(rect.bottom, 0.4, 0)
     }
 
     const tick = () => {
@@ -334,7 +346,11 @@ const HeroHalftone = ({ text = true }) => {
   return (
     <div ref={rootRef} className="hero-halftone">
       {box && (
-        <svg className="hero-halftone-svg" viewBox={`0 0 ${box.w} ${box.h}`}>
+        <svg
+          ref={svgRef}
+          className="hero-halftone-svg"
+          viewBox={`0 0 ${box.w} ${box.h}`}
+        >
           <defs ref={pointRef}>
             <marker
               id={`${markerId}-end`}

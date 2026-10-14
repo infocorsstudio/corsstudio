@@ -1,4 +1,32 @@
 .opencall-page {
-  min-height: 100vh;
   width: 100%;
+}
+
+.opencall-section {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: var(--header-height) var(--gap-l) var(--gap-l);
+}
+
+.opencall-copy {
+  max-width: 40rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-s);
+  font-family: 'Inter', sans-serif;
+  font-size: var(--font-xs);
+}
+
+.opencall-copy h2 {
+  font-size: var(--font-m);
+  color: var(--color-theme);
+}
+
+.opencall-steps {
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
 }
