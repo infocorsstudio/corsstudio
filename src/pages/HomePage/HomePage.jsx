@@ -88,8 +88,6 @@ const HomePage = () => {
         </div>
       </section>
       <section className="home-section-2"></section>
-      <section className="home-section-3"></section>
-      <section className="home-section-4"></section>
       <section className="current-event" ref={currentEventRef}>
         <div className="cloth-canvas-wrap">
           {showCloth && <ClothScene />}
