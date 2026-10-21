@@ -20,7 +20,12 @@ const GATHER_DELAY_MAX = 0.8 // per-particle random delay, added on top of ENTRA
 const SEG_MAX = TRAIL_MAX - 1
 const LOGO_WORLD_WIDTH = 7 // world units the logo spans
 const THICKNESS = 0.12 // z depth of the particle cloud
-const MODEL_OFFSET_X = 2.7 // shift the whole model to the right
+const MODEL_OFFSET_X = 2.7 // desktop: shift the whole model to the right
+const MOBILE_MAX = 800 // phone: sit on center, same as the about-page logo
+const MOBILE_OFFSET_Y = 1.2 // phone: lift the model above the intro
+const MOBILE_COUNT = 500
+const MOBILE_CAMERA_Z = 15
+const MOBILE_CAMERA_ZOOM_Z = 6
 
 // Edge biasing: push particles toward the outline of the shape.
 const EDGE_BIAS = 0.65 // 0 = uniform fill, 1 = only along the edges
@@ -239,7 +244,13 @@ const logoParticleBg = () => {
 
     const points = new THREE.Points(geometry, material)
     const group = new THREE.Group()
-    group.position.x = MODEL_OFFSET_X
+    const phone = () => mount.clientWidth <= MOBILE_MAX
+    let modelOffsetX = phone() ? 0 : MODEL_OFFSET_X
+    let modelOffsetY = phone() ? MOBILE_OFFSET_Y : 0
+    let cameraRestZ = phone() ? MOBILE_CAMERA_Z : CAMERA_Z
+    let cameraZoomZ = phone() ? MOBILE_CAMERA_ZOOM_Z : CAMERA_ZOOM_Z
+    cfgRef.current.count = phone() ? MOBILE_COUNT : DEFAULTS.count
+    group.position.set(modelOffsetX, modelOffsetY, 0)
     group.add(points)
     scene.add(group)
 
@@ -275,12 +286,12 @@ const logoParticleBg = () => {
       const fx = starts[i * 3]
       const fy = starts[i * 3 + 1]
       const fz = starts[i * 3 + 2]
-      const wx = fx * cos0 + fz * sin0 + MODEL_OFFSET_X
+      const wx = fx * cos0 + fz * sin0 + modelOffsetX
       const wz = -fx * sin0 + fz * cos0
       for (let s = 0; s < TRAIL_MAX; s++) {
         const h3 = (i * TRAIL_MAX + s) * 3
         history[h3] = wx
-        history[h3 + 1] = fy
+        history[h3 + 1] = fy + modelOffsetY
         history[h3 + 2] = wz
       }
     }
@@ -298,6 +309,17 @@ const logoParticleBg = () => {
       renderer.setSize(w, h)
       camera.aspect = w / h
       camera.updateProjectionMatrix()
+      const nextX = w <= MOBILE_MAX ? 0 : MODEL_OFFSET_X
+      const nextY = w <= MOBILE_MAX ? MOBILE_OFFSET_Y : 0
+      if (nextX !== modelOffsetX || nextY !== modelOffsetY) {
+        modelOffsetX = nextX
+        modelOffsetY = nextY
+        group.position.set(modelOffsetX, modelOffsetY, 0)
+        trailReset = true
+      }
+      cameraRestZ = w <= MOBILE_MAX ? MOBILE_CAMERA_Z : CAMERA_Z
+      cameraZoomZ = w <= MOBILE_MAX ? MOBILE_CAMERA_ZOOM_Z : CAMERA_ZOOM_Z
+      cfgRef.current.count = w <= MOBILE_MAX ? MOBILE_COUNT : DEFAULTS.count
     }
     resize()
     window.addEventListener('resize', resize)
@@ -381,7 +403,7 @@ const logoParticleBg = () => {
       camera.position.set(
         0,
         0,
-        CAMERA_Z + (CAMERA_ZOOM_Z - CAMERA_Z) * scatter.value
+        cameraRestZ + (cameraZoomZ - cameraRestZ) * scatter.value
       )
       camera.updateMatrixWorld() // keep projection fresh for repulsion below
 
@@ -402,9 +424,9 @@ const logoParticleBg = () => {
         let oy = 0
         let oz = 0
         if (interactionOn && mouse.active) {
-          const wx = bx * cosA + bz * sinA + MODEL_OFFSET_X
+          const wx = bx * cosA + bz * sinA + modelOffsetX
           const wz = -bx * sinA + bz * cosA
-          proj.set(wx, by, wz).project(camera)
+          proj.set(wx, by + modelOffsetY, wz).project(camera)
           let dx = (proj.x - mouse.x) * aspect
           const dy = proj.y - mouse.y
           const dist = Math.sqrt(dx * dx + dy * dy)
@@ -429,20 +451,20 @@ const logoParticleBg = () => {
         arr[i3 + 1] = fy
         arr[i3 + 2] = fz
 
-        const wx = fx * cosA + fz * sinA + MODEL_OFFSET_X
+        const wx = fx * cosA + fz * sinA + modelOffsetX
         const wz = -fx * sinA + fz * cosA
         if (trailReset) {
           const base = i * TRAIL_MAX * 3
           for (let s = 0; s < TRAIL_MAX; s++) {
             const o = base + s * 3
             history[o] = wx
-            history[o + 1] = fy
+            history[o + 1] = fy + modelOffsetY
             history[o + 2] = wz
           }
         } else {
           const h3 = (i * TRAIL_MAX + histHead) * 3
           history[h3] = wx
-          history[h3 + 1] = fy
+          history[h3 + 1] = fy + modelOffsetY
           history[h3 + 2] = wz
         }
       }

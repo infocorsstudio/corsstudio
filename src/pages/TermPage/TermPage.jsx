@@ -13,10 +13,10 @@ const TermPage = () => {
       {site && (
         <>
           <section className="term-section">
-            <div className="term-copy">
-              <h2 data-reveal>{site.term.faq.heading}</h2>
+            <div className="term-copy term-faq">
+              <h2>{site.term.faq.heading}</h2>
               {site.term.faq.items.map((item) => (
-                <div className="term-item" key={item.question} data-reveal>
+                <div className="term-item" key={item.question}>
                   <h3>{item.question}</h3>
                   <p>{item.answer}</p>
                 </div>

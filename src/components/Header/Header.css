@@ -72,6 +72,10 @@
 }
 
 @media (max-width: 800px) {
+    #navCenter {
+        display: none;
+    }
+
     .logo-text,
     .navText {
         font-size: var(--font-xs);

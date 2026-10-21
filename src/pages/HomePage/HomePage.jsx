@@ -5,6 +5,7 @@ import HeroHalftone from '../../components/HeroHalftone/HeroHalftone'
 import LogoParticleBg from '../../components/logoParticleBg/logoParticleBg'
 import ClothScene from '../../components/ClothScene/ClothScene'
 import { useSiteContent } from '../../data/siteContent'
+import { fillButton } from '../../buttonHover'
 
 const introParagraphs = [
   'CORS Studio is an independent creative studio founded by Yuehan Ma and Yichen Ji.',
@@ -111,6 +112,8 @@ const HomePage = () => {
               href={site.issueIntro.apply.href}
               target="_blank"
               rel="noopener noreferrer"
+              onMouseEnter={(e) => fillButton(e.currentTarget, true)}
+              onMouseLeave={(e) => fillButton(e.currentTarget, false)}
             >
               {site.issueIntro.apply.label}
             </a>

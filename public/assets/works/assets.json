@@ -29,12 +29,12 @@
         "text": "Spanning fashion, graphic design, art, photography, writing, and contemporary culture, Issue 001 considers what it means to approach a boundary, to cross it, and to attend to what has been left behind."
       },
       {
-        "text": "Open calls for each section will be announced in due course."
+        "text": "The open call for Section I, Almost Human, is now open."
       }
     ],
     "apply": {
       "label": "Apply Now",
-      "href": "about:blank"
+      "href": "https://forms.gle/ePr3DQMR4TvBPMRt6"
     }
   },
   "openCall": {
@@ -56,7 +56,32 @@
         "text": "How do we recognize something through its absence?"
       }
     ],
-    "exploreLabel": "Explore Almost Human Open Call Below"
+    "exploreLabel": "Explore Almost Human Open Call Below",
+    "almostHuman": {
+      "heading": "CORS Issue 001 / Spring 2027",
+      "title": "Section I: Almost Human",
+      "paragraphs": [
+        "Where does the human end and the artificial begin? Who is allowed to draw that boundary?",
+        "Almost Human explores the increasingly unstable distinction between people, machines, and the systems connecting them. Technology no longer simply imitates human behavior. It reshapes our bodies, influences how we express identity, mediates our relationships, and changes how we understand intelligence, emotion, labor, and creativity.",
+        "As artificial intelligence learns to speak, respond, remember, and simulate care, human identity is also being reconstructed through avatars, algorithms, prosthetics, data, and digital performance. We project thoughts and emotions onto nonhuman forms while adapting ourselves to the logic of the machines we create. In this exchange, the categories of human and artificial become increasingly difficult to separate.",
+        "This section invites work that examines what it means to be human within a world of intelligent machines and technologically altered bodies. Submissions may respond to artificial intelligence, cyborgs, biotechnology, prosthetics, digital identity, avatars, synthetic emotion, automation, surveillance, anthropomorphism, virtual intimacy, replication, or other forms of human and nonhuman entanglement.",
+        "We welcome artwork, fashion, graphic design, photography, writing, and other print-based work that questions, expands, or disrupts conventional definitions of the human."
+      ],
+      "details": [
+        {
+          "label": "Eligibility",
+          "text": "Open to artists and creatives working in print-based media"
+        },
+        {
+          "label": "Application Deadline",
+          "text": "November 20, 2026"
+        }
+      ],
+      "apply": {
+        "label": "Apply Now",
+        "href": "https://forms.gle/9nGDW6ZUSKgX4i7g7"
+      }
+    }
   },
   "term": {
     "faq": {

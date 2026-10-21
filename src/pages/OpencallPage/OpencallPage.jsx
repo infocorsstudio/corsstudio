@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import './OpencallPage.css'
 import { useSiteContent } from '../../data/siteContent'
 import useScrollReveal from '../../hooks/useScrollReveal'
+import { fillButton } from '../../buttonHover'
 
 const lookingFor = {
   lead: 'Issue 001 invites artists, designers, writers, and photographers at any stage of their practice to submit work that responds to one of its three sections: Almost Human, The Other Side, or Something Is Missing.',
@@ -70,6 +71,8 @@ const OpencallPage = () => {
               <button
                 type="button"
                 className="opencall-apply"
+                onMouseEnter={(e) => fillButton(e.currentTarget, true)}
+                onMouseLeave={(e) => fillButton(e.currentTarget, false)}
                 onClick={() => {
                   sectionTwoRef.current?.scrollIntoView({ behavior: 'smooth' })
                 }}
@@ -88,7 +91,32 @@ const OpencallPage = () => {
               src={site.assets.openCallPoster}
               alt={site.assets.openCallPosterAlt}
             />
-            <div className="opencall-issue" />
+            <div className="opencall-issue opencall-call">
+              <div className="opencall-call-block">
+                <h2>{site.openCall.almostHuman.heading}</h2>
+                <p>
+                  <strong>{site.openCall.almostHuman.title}</strong>
+                </p>
+                {site.openCall.almostHuman.paragraphs.map((text) => (
+                  <p key={text}>{text}</p>
+                ))}
+                {site.openCall.almostHuman.details.map((item) => (
+                  <p key={item.label}>
+                    <strong>{item.label}:</strong> {item.text}
+                  </p>
+                ))}
+                <a
+                  className="opencall-apply"
+                  href={site.openCall.almostHuman.apply.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onMouseEnter={(e) => fillButton(e.currentTarget, true)}
+                  onMouseLeave={(e) => fillButton(e.currentTarget, false)}
+                >
+                  {site.openCall.almostHuman.apply.label}
+                </a>
+              </div>
+            </div>
           </>
         )}
       </section>
@@ -100,7 +128,7 @@ const OpencallPage = () => {
           </p>
           <ul className="opencall-bento">
             {lookingFor.formats.map((text) => (
-              <li key={text} data-reveal>
+              <li key={text} data-reveal data-scramble>
                 {text}
               </li>
             ))}

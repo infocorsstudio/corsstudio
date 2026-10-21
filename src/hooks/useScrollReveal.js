@@ -16,6 +16,43 @@ const leaveFor = (el) => {
   return `${endLine}px start`
 }
 
+const SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789~!@#$%^&*()+=;:<>?/|'
+const SCRAMBLE_MS = 600
+const SCRAMBLE_FRAME = 1000 / 40
+
+const textNodesIn = (el) => {
+  const nodes = []
+  const walk = (node) => {
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === 3) {
+        if (child.textContent.trim()) nodes.push(child)
+      } else if (child.nodeType === 1) {
+        walk(child)
+      }
+    })
+  }
+  walk(el)
+  return nodes
+}
+
+// Same lock-in as TextScramble: characters resolve from the start while the rest stay random.
+const paintScramble = (item, p) => {
+  item.nodes.forEach((node, i) => {
+    const text = item.originals[i]
+    if (p >= 1) {
+      node.textContent = text
+      return
+    }
+    const correct = Math.floor(p * text.length)
+    let next = ''
+    for (let c = 0; c < text.length; c++) {
+      if (c < correct || text[c] === ' ') next += text[c]
+      else next += SCRAMBLE_CHARS[(Math.random() * SCRAMBLE_CHARS.length) | 0]
+    }
+    node.textContent = next
+  })
+}
+
 const useScrollReveal = (rootRef, deps = []) => {
   useLayoutEffect(() => {
     const root = rootRef.current
@@ -53,13 +90,52 @@ const useScrollReveal = (rootRef, deps = []) => {
           return
         }
         item.target = item.scroller.progress
+        if (item.scramble && item.scrambleStart == null && item.target > 0 && item.nodes.length) {
+          item.el.style.width = `${item.el.offsetWidth}px`
+          item.el.style.height = `${item.el.offsetHeight}px`
+          item.el.style.overflow = 'hidden'
+          item.scrambleStart = performance.now()
+          item.lastPaint = 0
+          const finish = () => {
+            paintScramble(item, 1)
+            item.el.style.width = ''
+            item.el.style.height = ''
+            item.el.style.overflow = ''
+          }
+          const run = () => {
+            if (!alive) return
+            const now = performance.now()
+            const p = Math.min((now - item.scrambleStart) / SCRAMBLE_MS, 1)
+            if (p === 1 || now - item.lastPaint >= SCRAMBLE_FRAME) {
+              if (p === 1) finish()
+              else {
+                paintScramble(item, p)
+                item.lastPaint = now
+              }
+            }
+            if (p < 1) item.raf = requestAnimationFrame(run)
+          }
+          item.raf = requestAnimationFrame(run)
+        }
       })
       if (pending && alive) requestAnimationFrame(syncTargets)
       kick()
     }
 
     root.querySelectorAll('[data-reveal]').forEach((el) => {
-      const item = { target: 0, current: 0 }
+      const scramble = el.hasAttribute('data-scramble')
+      const nodes = scramble ? textNodesIn(el) : []
+      const item = {
+        target: 0,
+        current: 0,
+        el,
+        scramble,
+        nodes,
+        originals: nodes.map((node) => node.textContent),
+        scrambleStart: null,
+        lastPaint: 0,
+        raf: 0,
+      }
       item.anim = animate(el, {
         x: ['-10%', 0],
         opacity: [0, 1],
@@ -85,6 +161,15 @@ const useScrollReveal = (rootRef, deps = []) => {
       window.removeEventListener('scroll', syncTargets)
       window.removeEventListener('resize', syncTargets)
       items.forEach((item) => {
+        cancelAnimationFrame(item.raf)
+        if (item.scramble) {
+          item.nodes.forEach((node, i) => {
+            node.textContent = item.originals[i]
+          })
+          item.el.style.width = ''
+          item.el.style.height = ''
+          item.el.style.overflow = ''
+        }
         item.anim.revert()
         item.scroller.revert()
       })

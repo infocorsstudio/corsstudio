@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import './AboutPage.css'
 import LogoSpinBg from '../../components/logoSpinBg/logoSpinBg'
+import { fillButton } from '../../buttonHover'
 
 const aboutParagraphs = [
   'CORS Studio is an independent creative studio founded by Yuehan Ma and Yichen Ji.',
@@ -10,8 +11,9 @@ const aboutParagraphs = [
   'Alongside our design practice, publishing is an important part of CORS Studio. Through independently produced publications, open calls, and collaborative editorial projects, we create spaces where writing, artwork, photography, and other forms of creative work can exist in conversation.',
   'We are especially interested in what happens when different perspectives are placed beside one another. A photograph can change the way a text is understood; a digital system can influence a visual identity; an editorial structure can become a way of organizing ideas rather than simply presenting them.',
   'Whether we are developing a publication, building an identity, or working with a client on a commissioned project, we approach design as a process of connection—between disciplines, contexts, audiences, and ideas.',
-  'Across origins, beyond boundaries.',
 ]
+
+const tagline = 'Across origins, beyond boundaries'
 
 const AboutPage = () => {
   return (
@@ -22,10 +24,18 @@ const AboutPage = () => {
           {aboutParagraphs.map((text) => (
             <p key={text}>{text}</p>
           ))}
+          <p className="about-tagline">{tagline}</p>
         </div>
-        <Link className="about-terms" to="/term">
-        Terms and Conditions
-        </Link>
+        <div className="about-terms-wrap">
+          <Link
+            className="about-terms"
+            to="/term"
+            onMouseEnter={(e) => fillButton(e.currentTarget, true)}
+            onMouseLeave={(e) => fillButton(e.currentTarget, false)}
+          >
+            Terms and Conditions
+          </Link>
+        </div>
       </section>
     </div>
   )

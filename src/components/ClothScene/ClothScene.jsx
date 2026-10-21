@@ -10,6 +10,8 @@ const MOUSE_WIND = 3 // localized wind strength at the pointer
 const MOUSE_RADIUS = 100 // local-space radius affected around the pointer hit
 const HIT_GRACE_MS = 150 // keep "hovering" this long after the last ray hit (anti-flicker)
 const DEFAULT_DISTANCE = 300 // camera distance on z (fixed)
+const MOBILE_MAX = 800
+const MOBILE_DISTANCE = 380 // phone: pull the camera back so the cloth sits smaller
 const DEFAULT_FOCAL = 25 // camera focal length (mm)
 const DEFAULT_CLOTH_SCALE_X = 1 // cloth width multiplier
 const DEFAULT_CLOTH_SCALE_Y = 1 // cloth height multiplier (initial, before texture loads)
@@ -308,6 +310,7 @@ const ClothScene = () => {
     const resize = () => {
       const w = mount.clientWidth
       const h = mount.clientHeight
+      camera.position.z = w <= MOBILE_MAX ? MOBILE_DISTANCE : DEFAULT_DISTANCE
       renderer.setSize(w, h)
       camera.aspect = w / h
       camera.updateProjectionMatrix()

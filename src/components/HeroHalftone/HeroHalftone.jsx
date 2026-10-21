@@ -7,6 +7,7 @@ const THICK_FROM = 3
 const THICK_TO = 6
 const WORD_SCALE_TO = 2.5
 const GRAY = 229
+const MOBILE_MAX = 800
 
 // Parallel 45° lines covering the viewport. Built once per resize.
 const buildLines = (w, h) => {
@@ -38,9 +39,10 @@ const buildLines = (w, h) => {
   return lines
 }
 
-// Raster of the unstretched CORS word. Horizontal stretch samples this
-// with an inverse scale, so the letter gets wider without moving the lines.
-const buildGlyphMask = (w, h, fontSize) => {
+// Raster of the unstretched CORS word. Stretch samples this with an inverse
+// scale along the word, so it grows longer without moving the lines.
+// On a phone the word is turned 90° clockwise and reads from top to bottom.
+const buildGlyphMask = (w, h, fontSize, vertical) => {
   const canvas = document.createElement('canvas')
   canvas.width = w
   canvas.height = h
@@ -49,15 +51,25 @@ const buildGlyphMask = (w, h, fontSize) => {
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillStyle = '#fff'
-  ctx.fillText('CORS', w / 2, h / 2)
   const measured = ctx.measureText('CORS')
   const ascent = measured.actualBoundingBoxAscent || fontSize * 0.8
   const descent = measured.actualBoundingBoxDescent || fontSize * 0.2
+  ctx.translate(w / 2, h / 2)
+  if (vertical) ctx.rotate(Math.PI / 2)
+  ctx.fillText('CORS', 0, 0)
   const pad = 8
-  const x = Math.max(0, Math.floor(w / 2 - measured.width / 2) - pad)
-  const y = Math.max(0, Math.floor(h / 2 - ascent) - pad)
-  const mw = Math.min(w - x, Math.ceil(measured.width) + pad * 2)
-  const mh = Math.min(h - y, Math.ceil(ascent + descent) + pad * 2)
+  const x = vertical
+    ? Math.max(0, Math.floor(w / 2 - descent) - pad)
+    : Math.max(0, Math.floor(w / 2 - measured.width / 2) - pad)
+  const y = vertical
+    ? Math.max(0, Math.floor(h / 2 - measured.width / 2) - pad)
+    : Math.max(0, Math.floor(h / 2 - ascent) - pad)
+  const mw = vertical
+    ? Math.min(w - x, Math.ceil(ascent + descent) + pad * 2)
+    : Math.min(w - x, Math.ceil(measured.width) + pad * 2)
+  const mh = vertical
+    ? Math.min(h - y, Math.ceil(measured.width) + pad * 2)
+    : Math.min(h - y, Math.ceil(ascent + descent) + pad * 2)
   if (mw < 1 || mh < 1) return null
   return {
     pixels: ctx.getImageData(x, y, mw, mh).data,
@@ -67,21 +79,26 @@ const buildGlyphMask = (w, h, fontSize) => {
     mh,
     cx: w / 2,
     cy: h / 2,
+    vertical,
   }
 }
 
 // Cut each line into the pieces that sit inside the glyph.
-// scaleX widens the word around its center. Endpoints land on the outline.
-const clipLinesToGlyph = (lines, mask, scaleX) => {
+// scale lengthens the word around its center, horizontally on desktop
+// and vertically on a phone. Endpoints land on the outline.
+const clipLinesToGlyph = (lines, mask, scale) => {
+  const scaleX = mask.vertical ? 1 : scale
+  const scaleY = mask.vertical ? scale : 1
   const left = mask.cx + (mask.x - mask.cx) * scaleX
   const right = mask.cx + (mask.x + mask.mw - mask.cx) * scaleX
-  const top = mask.y
-  const bottom = mask.y + mask.mh
+  const top = mask.cy + (mask.y - mask.cy) * scaleY
+  const bottom = mask.cy + (mask.y + mask.mh - mask.cy) * scaleY
 
   const inside = (sx, sy) => {
     const gx = mask.cx + (sx - mask.cx) / scaleX
+    const gy = mask.cy + (sy - mask.cy) / scaleY
     const px = (gx - mask.x) | 0
-    const py = (sy - mask.y) | 0
+    const py = (gy - mask.y) | 0
     if (px < 0 || py < 0 || px >= mask.mw || py >= mask.mh) return false
     return mask.pixels[(py * mask.mw + px) * 4 + 3] > 128
   }
@@ -191,9 +208,12 @@ const HeroHalftone = ({ text = true }) => {
       const w = root.clientWidth
       const h = root.clientHeight
       if (!w || !h) return
-      const fontSize = Math.min(w * 0.22, h * 0.62)
+      const vertical = w <= MOBILE_MAX
+      const fontSize = vertical
+        ? Math.min(h * 0.22, w * 0.55)
+        : Math.min(w * 0.22, h * 0.62)
       const lines = buildLines(w, h)
-      const glyph = text ? buildGlyphMask(w, h, fontSize) : null
+      const glyph = text ? buildGlyphMask(w, h, fontSize, vertical) : null
       setBox({
         w,
         h,
@@ -284,10 +304,10 @@ const HeroHalftone = ({ text = true }) => {
       const b = GRAY + (theme[2] - GRAY) * colorU
       const color = `rgb(${r | 0},${g | 0},${b | 0})`
       if (box?.glyph) {
-        const scaleX = 1 + (WORD_SCALE_TO - 1) * tracks.word.current
-        if (Math.abs(scaleX - lastScale) > 0.008) {
-          paintWord(scaleX)
-          lastScale = scaleX
+        const scale = 1 + (WORD_SCALE_TO - 1) * tracks.word.current
+        if (Math.abs(scale - lastScale) > 0.008) {
+          paintWord(scale)
+          lastScale = scale
         }
       }
       if (thickRef.current && (color !== lastColor || Math.abs(thick - lastThick) > 0.02)) {

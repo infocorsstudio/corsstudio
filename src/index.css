@@ -12,10 +12,6 @@
     font-style: italic;
 }
 
-/* Temporary debug: colored element outlines. */
-* {
-    border: 1px solid;
-}
 /* ===== Color palette (master) ===== */
 :root {
     --color-theme: #e60000;      /* 主题色 */
