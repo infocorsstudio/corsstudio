@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom'
 import './AboutPage.css'
+import LogoSpinBg from '../../components/logoSpinBg/logoSpinBg'
 
 const aboutParagraphs = [
   'CORS Studio is an independent creative studio founded by Yuehan Ma and Yichen Ji.',
@@ -15,11 +17,15 @@ const AboutPage = () => {
   return (
     <div className="about-page">
       <section className="about-section-1">
+        <LogoSpinBg />
         <div className="about-intro">
-          {aboutParagraphs.map((text, i) => (
-            <p key={i}>{text}</p>
+          {aboutParagraphs.map((text) => (
+            <p key={text}>{text}</p>
           ))}
         </div>
+        <Link className="about-terms" to="/term">
+          Term and Condition
+        </Link>
       </section>
     </div>
   )

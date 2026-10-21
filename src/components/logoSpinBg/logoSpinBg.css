@@ -1,0 +1,21 @@
+.logo-spin-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.logo-spin-bg.is-ready {
+  animation: logo-spin-bg-fade 0.5s ease forwards;
+}
+
+@keyframes logo-spin-bg-fade {
+  to {
+    opacity: 1;
+  }
+}
+
+.logo-spin-bg canvas {
+  display: block;
+}

@@ -1,0 +1,54 @@
+.term-page {
+  width: 100%;
+}
+
+.term-section {
+  width: 100vw;
+  min-height: 100vh;
+  display: flex;
+  align-items: safe center;
+  justify-content: center;
+  padding: calc(var(--header-height) + var(--gap-l)) var(--gap-l) var(--gap-l);
+}
+
+/* Room at the end so the last items can finish their scroll reveal. */
+.term-section:last-child {
+  padding-bottom: 25vh;
+}
+
+.term-copy {
+  width: 100%;
+  max-width: 44rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-l);
+  font-family: 'Inter', sans-serif;
+  font-size: var(--font-xs);
+  line-height: 1.5;
+}
+
+.term-copy h2 {
+  font-size: var(--font-l);
+  line-height: 1.1;
+  color: var(--color-theme);
+}
+
+.term-intro {
+  font-size: var(--font-s);
+}
+
+.term-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.term-item h3 {
+  font-size: var(--font-s);
+  font-weight: 600;
+}
+
+.term-index {
+  font-size: var(--font-xxs);
+  color: var(--color-theme);
+}

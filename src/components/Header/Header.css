@@ -74,7 +74,7 @@
 @media (max-width: 800px) {
     .logo-text,
     .navText {
-        font-size: var(--font-m);
+        font-size: var(--font-xs);
     }
 
     .logo-icon {

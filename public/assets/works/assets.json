@@ -1,0 +1,120 @@
+{
+  "id": "issue001",
+  "title": "Issue 001",
+  "assets": {
+    "mainHero": "/assets/works/issue001/issue001_poster.jpg",
+    "mainHeroAlt": "CORS Issue 001",
+    "openCallPoster": "/assets/works/issue001/issue001_opencall1_poster.jpg",
+    "openCallPosterAlt": "Almost Human Open Call"
+  },
+  "issueIntro": {
+    "heading": "CORS Issue 001 / Spring 2027",
+    "blocks": [
+      {
+        "text": "CORS Studio is pleased to present its inaugural issue. Issue 001 brings together three interconnected sections that examine unstable boundaries, altered identities, and the traces left by what can no longer be seen."
+      },
+      {
+        "title": "I. Almost Human",
+        "text": "Where does the human end, and something else begin?"
+      },
+      {
+        "title": "II. The Other Side",
+        "text": "What exists beyond the boundaries we know?"
+      },
+      {
+        "title": "III. Something Is Missing",
+        "text": "How do we recognize something through its absence?"
+      },
+      {
+        "text": "Spanning fashion, graphic design, art, photography, writing, and contemporary culture, Issue 001 considers what it means to approach a boundary, to cross it, and to attend to what has been left behind."
+      },
+      {
+        "text": "Open calls for each section will be announced in due course."
+      }
+    ],
+    "apply": {
+      "label": "Apply Now",
+      "href": "about:blank"
+    }
+  },
+  "openCall": {
+    "heading": "CORS Issue 001 / Spring 2027",
+    "blocks": [
+      {
+        "text": "CORS Studio is pleased to present its inaugural issue. Issue 001 brings together three interconnected sections that examine unstable boundaries, altered identities, and the traces left by what can no longer be seen."
+      },
+      {
+        "title": "I. Almost Human",
+        "text": "Where does the human end, and something else begin?"
+      },
+      {
+        "title": "II. The Other Side",
+        "text": "What exists beyond the boundaries we know?"
+      },
+      {
+        "title": "III. Something Is Missing",
+        "text": "How do we recognize something through its absence?"
+      }
+    ],
+    "exploreLabel": "Explore Almost Human Open Call Below"
+  },
+  "term": {
+    "faq": {
+      "heading": "Frequently Asked Questions",
+      "items": [
+        {
+          "question": "How does participation work?",
+          "answer": "Selected works are published in the CORS Studio magazine and featured in its related promotion. Each issue is developed in close collaboration between the contributing artists and the CORS Studio editorial team. Artists retain full ownership of their work at all times."
+        },
+        {
+          "question": "How are contributors selected?",
+          "answer": "Contributors are selected through an open call, by curatorial invitation, or through a combination of both, depending on the issue."
+        },
+        {
+          "question": "Who reviews open call submissions?",
+          "answer": "Every submission is reviewed by the CORS Studio editorial team against the concept and editorial direction of the issue. All applicants are notified of the outcome by email."
+        },
+        {
+          "question": "Are application fees refundable?",
+          "answer": "Application and participation fees are non-refundable, regardless of the outcome of the selection."
+        }
+      ]
+    },
+    "heading": "Term and Condition",
+    "intro": "The following terms govern every submission to CORS Studio and every form of participation in its publications, open calls, and events.",
+    "sections": [
+      {
+        "title": "Scope and Acceptance",
+        "text": "These terms apply to all artists and participants who submit work to CORS Studio, or who take part in a CORS Studio publication, open call, or event. By submitting work or participating, the artist confirms that they have read, understood, and accepted these terms."
+      },
+      {
+        "title": "Ownership and Copyright",
+        "text": "All rights, title, and copyright in a submitted work remain with the artist. Nothing in these terms transfers ownership of any work to CORS Studio."
+      },
+      {
+        "title": "Permitted Use",
+        "text": "The artist grants CORS Studio a non-exclusive permission to reproduce the work in the magazine and to use it in the promotion of the magazine and of CORS Studio. Promotional use is limited to the CORS Studio website, its official social media channels, and the magazine itself. The work will not be used for any other purpose."
+      },
+      {
+        "title": "No Resale",
+        "text": "CORS Studio does not sell, license, or otherwise commercially exploit an artist's work outside of the magazine. The sale of the magazine is the only sale in which the work is included."
+      },
+      {
+        "title": "Attribution",
+        "text": "Every work is credited to its original author wherever it appears, both in the magazine and in all promotional material."
+      },
+      {
+        "title": "Editorial Collaboration",
+        "text": "Each issue is developed jointly by the contributing artists and CORS Studio. CORS Studio is responsible for the sequencing, layout, and design of the issue, and may adjust how a work is presented so that it sits within the issue as a whole. The work itself remains the artist's."
+      },
+      {
+        "title": "Warranty of Rights",
+        "text": "The artist warrants that they are the author of the submitted work, or that they hold all rights necessary to submit it, and that its publication will not infringe the rights of any third party."
+      },
+      {
+        "title": "Fees",
+        "text": "Application and participation fees, where applicable, are non-refundable."
+      }
+    ]
+  }
+}

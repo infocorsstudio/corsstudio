@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { animate, onScroll } from 'animejs'
 import './HomePage.css'
 import HeroHalftone from '../../components/HeroHalftone/HeroHalftone'
-import HeroBackground from '../../components/HeroBackground/HeroBackground'
+import LogoParticleBg from '../../components/logoParticleBg/logoParticleBg'
 import ClothScene from '../../components/ClothScene/ClothScene'
+import { useSiteContent } from '../../data/siteContent'
 
 const introParagraphs = [
   'CORS Studio is an independent creative studio founded by Yuehan Ma and Yichen Ji.',
@@ -12,6 +13,7 @@ const introParagraphs = [
 ]
 
 const HomePage = () => {
+  const site = useSiteContent()
   const currentEventRef = useRef(null)
   const [showCloth, setShowCloth] = useState(false)
 
@@ -69,7 +71,7 @@ const HomePage = () => {
     <div className="home-page">
       <section className="home-hero">
         <HeroHalftone />
-        <HeroBackground />
+        <LogoParticleBg />
         <div className="hero-intro-wrap">
           <div className="hero-intro">
             <img
@@ -92,44 +94,30 @@ const HomePage = () => {
         <div className="cloth-canvas-wrap">
           {showCloth && <ClothScene />}
         </div>
-        <div className="issue-intro">
-          <h2>CORS Issue 001 / Spring 2027</h2>
-          <p>
-            CORS Studio is pleased to present its inaugural issue. Issue 001
-            brings together three interconnected sections that examine unstable
-            boundaries, altered identities, and the traces left by what can no
-            longer be seen.
-          </p>
-          <p>
-            <strong>I. Almost Human</strong>
-            <br />
-            Where does the human end, and something else begin?
-          </p>
-          <p>
-            <strong>II. The Other Side</strong>
-            <br />
-            What exists beyond the boundaries we know?
-          </p>
-          <p>
-            <strong>III. Something Is Missing</strong>
-            <br />
-            How do we recognize something through its absence?
-          </p>
-          <p>
-            Spanning fashion, graphic design, art, photography, writing, and
-            contemporary culture, Issue 001 considers what it means to approach a
-            boundary, to cross it, and to attend to what has been left behind.
-          </p>
-          <p>Open calls for each section will be announced in due course.</p>
-          <a
-            className="issue-apply"
-            href="about:blank"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Apply Now
-          </a>
-        </div>
+        {site && (
+          <div className="issue-intro">
+            <h2>{site.issueIntro.heading}</h2>
+            {site.issueIntro.blocks.map((block) => (
+              <p key={block.title || block.text}>
+                {block.title && (
+                  <>
+                    <strong>{block.title}</strong>
+                    <br />
+                  </>
+                )}
+                {block.text}
+              </p>
+            ))}
+            <a
+              className="issue-apply"
+              href={site.issueIntro.apply.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {site.issueIntro.apply.label}
+            </a>
+          </div>
+        )}
       </section>
     </div>
   )

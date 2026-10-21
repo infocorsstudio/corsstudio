@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { record } from '../../debug/perfLog'
-import './HeroBackground.css'
+import './logoParticleBg.css'
 
 // The CORS logo path (viewBox 64.3 x 29.42)
 const LOGO_PATH =
@@ -39,11 +39,6 @@ const CAMERA_Z = 10
 const CAMERA_ZOOM_Z = 4 // z when the scatter finishes (smaller = closer)
 // Same inertia as the hero intro onScroll sync (0.4): lower = more lag
 const SCATTER_SYNC = 0.5
-
-// Subtle camera parallax following the mouse
-const PARALLAX_X = 0.05 // world units the camera drifts horizontally
-const PARALLAX_Y = 0.02 // world units the camera drifts vertically
-const PARALLAX_EASE = 0.05 // smoothing (smaller = slower follow)
 
 // Live-tunable defaults (exposed as debug sliders)
 const DEFAULTS = {
@@ -143,7 +138,7 @@ const makeTriangleTexture = () => {
 // Matches anime.js out(4): 1 - (1 - t)^4 (same curve as the header entrance)
 const easeOut4 = (t) => 1 - Math.pow(1 - t, 4)
 
-const HeroBackground = () => {
+const logoParticleBg = () => {
   const mountRef = useRef(null)
   const cfgRef = useRef({ ...DEFAULTS })
 
@@ -383,12 +378,11 @@ const HeroBackground = () => {
       const aspect = camera.aspect
       const arr = posAttr.array
 
-      // Camera parallax: drift toward the mouse, ease back to center on leave.
-      const camTX = interactionOn && mouse.active ? mouse.x * PARALLAX_X : 0
-      const camTY = interactionOn && mouse.active ? mouse.y * PARALLAX_Y : 0
-      camera.position.x += (camTX - camera.position.x) * PARALLAX_EASE
-      camera.position.y += (camTY - camera.position.y) * PARALLAX_EASE
-      camera.position.z = CAMERA_Z + (CAMERA_ZOOM_Z - CAMERA_Z) * scatter.value
+      camera.position.set(
+        0,
+        0,
+        CAMERA_Z + (CAMERA_ZOOM_Z - CAMERA_Z) * scatter.value
+      )
       camera.updateMatrixWorld() // keep projection fresh for repulsion below
 
       histHead = (histHead + 1) % TRAIL_MAX
@@ -523,7 +517,7 @@ const HeroBackground = () => {
     }
   }, [])
 
-  return <div ref={mountRef} className="hero-background" />
+  return <div ref={mountRef} className="logo-particle-bg" />
 }
 
-export default HeroBackground
+export default logoParticleBg

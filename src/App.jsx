@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage/HomePage'
 import MagazinePage from './pages/MagazinePage/MagazinePage'
 import AboutPage from './pages/AboutPage/AboutPage'
 import OpencallPage from './pages/OpencallPage/OpencallPage'
+import TermPage from './pages/TermPage/TermPage'
 import Header from './components/Header/Header'
 import FaviconRotator from './components/FaviconRotator/FaviconRotator'
 import './App.css'
@@ -21,6 +22,7 @@ function App() {
           <Route path="/magazine" element={<MagazinePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/opencall" element={<OpencallPage />} />
+          <Route path="/term" element={<TermPage />} />
         </Routes>
         <Analytics />
       </div>

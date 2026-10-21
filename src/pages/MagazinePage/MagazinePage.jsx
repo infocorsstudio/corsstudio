@@ -6,7 +6,7 @@ const MagazinePage = () => {
     <div className="magazine-page">
       <section className="magazine-hero">
         <h1 className="magazine-hero-text">
-          <TextScramble text="ISSUE 001 COMING SOON" delay={0} />
+          <TextScramble text="ISSUE 001 COMING SPRING 2027" delay={0} />
         </h1>
       </section>
     </div>

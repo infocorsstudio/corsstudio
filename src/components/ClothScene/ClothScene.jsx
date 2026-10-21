@@ -139,7 +139,7 @@ const ClothScene = () => {
     // Cloth mesh
     const clothGeometry = new ParametricGeometry(clothFunction, xSegs, ySegs)
     const clothTexture = new THREE.TextureLoader().load(
-      '/assets/works/issue001/issue001_main_hero.jpg',
+      '/assets/works/issue001/issue001_poster.jpg',
       (tex) => {
         // Match the cloth's rendered aspect ratio to the image so it isn't distorted.
         const img = tex.image

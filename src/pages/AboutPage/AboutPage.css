@@ -3,6 +3,7 @@
 }
 
 .about-section-1 {
+  position: relative;
   min-height: 100vh;
   width: 100%;
   display: flex;
@@ -11,7 +12,22 @@
   padding: calc(var(--header-height) + var(--gap-l)) var(--gap-l) var(--gap-l);
 }
 
+.about-terms {
+  position: absolute;
+  z-index: 1;
+  right: var(--gap-l);
+  bottom: var(--gap-l);
+  font-family: 'Inter', sans-serif;
+  font-size: var(--font-xs);
+  color: var(--color-text);
+  text-decoration: none;
+  border: 1px solid var(--color-text);
+  padding: var(--gap-xxs) var(--gap-s);
+}
+
 .about-intro {
+  position: relative;
+  z-index: 1;
   max-width: 60rem;
   display: flex;
   flex-direction: column;
