@@ -58,6 +58,7 @@ const buildGlyphMask = (w, h, fontSize) => {
   const y = Math.max(0, Math.floor(h / 2 - ascent) - pad)
   const mw = Math.min(w - x, Math.ceil(measured.width) + pad * 2)
   const mh = Math.min(h - y, Math.ceil(ascent + descent) + pad * 2)
+  if (mw < 1 || mh < 1) return null
   return {
     pixels: ctx.getImageData(x, y, mw, mh).data,
     x,
@@ -171,11 +172,20 @@ const HeroHalftone = ({ text = true }) => {
   const pointRef = useRef(null)
   const markerId = useId().replace(/:/g, '')
   const [box, setBox] = useState(null)
+  const [ready, setReady] = useState(false)
+  // Kept outside the scroll effect so a resize rebuild does not rewind the animation.
+  const tracksRef = useRef({
+    color: { target: 0, current: 0 },
+    word: { target: 0, current: 0 },
+    thick: { target: 0, current: 0 },
+    fade: { target: 0, current: 0 },
+  })
 
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
     let alive = true
+    let timer = 0
 
     const measure = () => {
       const w = root.clientWidth
@@ -197,18 +207,24 @@ const HeroHalftone = ({ text = true }) => {
     const reveal = () => {
       if (!alive) return
       measure()
-      requestAnimationFrame(() => {
-        if (alive) root.classList.add('is-ready')
-      })
+      setReady(true)
     }
 
     if (!text || document.fonts.status === 'loaded') reveal()
     else document.fonts.ready.then(reveal)
 
-    window.addEventListener('resize', measure)
+    // Rebuild once the drag settles. Measuring on every resize event blocks the page.
+    const onResize = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        if (alive) measure()
+      }, 150)
+    }
+    window.addEventListener('resize', onResize)
     return () => {
       alive = false
-      window.removeEventListener('resize', measure)
+      window.clearTimeout(timer)
+      window.removeEventListener('resize', onResize)
     }
   }, [text])
 
@@ -220,12 +236,7 @@ const HeroHalftone = ({ text = true }) => {
   // The drawing fades out as section 2 bottom travels from 40% to the top.
   useEffect(() => {
     const section2 = document.querySelector('.home-section-2')
-    const tracks = {
-      color: { target: 0, current: 0 },
-      word: { target: 0, current: 0 },
-      thick: { target: 0, current: 0 },
-      fade: { target: 0, current: 0 },
-    }
+    const tracks = tracksRef.current
     let frameId = 0
     let running = false
     const step = 0.01 + 0.19 * 0.5
@@ -344,7 +355,7 @@ const HeroHalftone = ({ text = true }) => {
   }, [box])
 
   return (
-    <div ref={rootRef} className="hero-halftone">
+    <div ref={rootRef} className={ready ? 'hero-halftone is-ready' : 'hero-halftone'}>
       {box && (
         <svg
           ref={svgRef}

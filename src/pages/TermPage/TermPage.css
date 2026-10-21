@@ -50,6 +50,7 @@
 
 .term-index {
   font-size: var(--font-l);
+  font-weight: 700;
   line-height: 1;
   color: var(--color-theme);
 }
