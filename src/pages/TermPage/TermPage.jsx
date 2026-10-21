@@ -32,7 +32,7 @@ const TermPage = () => {
               {site.term.sections.map((section, i) => (
                 <div className="term-item" key={section.title} data-reveal>
                   <span className="term-index">
-                    {String(i + 1).padStart(2, '0')}
+                    {String(i + 1).padStart(3, '0')}
                   </span>
                   <h3>{section.title}</h3>
                   <p>{section.text}</p>

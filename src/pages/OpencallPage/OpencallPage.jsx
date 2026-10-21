@@ -92,20 +92,22 @@ const OpencallPage = () => {
           </>
         )}
       </section>
-      <section className="opencall-section">
+      <section className="opencall-section opencall-looking">
         <div className="opencall-copy">
           <h2 data-reveal>What We Are Looking For</h2>
           <p className="opencall-lead" data-reveal>
             {lookingFor.lead}
           </p>
-          <ul className="opencall-list">
+          <ul className="opencall-bento">
             {lookingFor.formats.map((text) => (
               <li key={text} data-reveal>
                 {text}
               </li>
             ))}
           </ul>
-          <p data-reveal>{lookingFor.note}</p>
+          <p className="opencall-note" data-reveal>
+            {lookingFor.note}
+          </p>
         </div>
       </section>
       <section className="opencall-section opencall-last">
@@ -115,7 +117,7 @@ const OpencallPage = () => {
             {applicationSteps.map((step, i) => (
               <li className="opencall-step" key={step.title} data-reveal>
                 <span className="opencall-index">
-                  {String(i + 1).padStart(2, '0')}
+                  {String(i + 1).padStart(3, '0')}
                 </span>
                 <h3>{step.title}</h3>
                 <p>{step.text}</p>

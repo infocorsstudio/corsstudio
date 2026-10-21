@@ -5,14 +5,13 @@ import { animate, onScroll } from 'animejs'
 const STEP = 0.01 + 0.19 * 0.4
 
 // Finish as the element's top reaches 75% of the viewport.
-// If the page ends before that line, finish at the element's resting place
+// If the page ends before that line, finish where the element actually rests,
 // so scrolling to the bottom still completes the animation.
 const leaveFor = (el) => {
   const vh = window.innerHeight || 1
   const maxScroll = Math.max(0, document.documentElement.scrollHeight - vh)
   const topAtEnd = el.getBoundingClientRect().top + window.scrollY - maxScroll
-  const line = vh * 0.75
-  if (topAtEnd <= line) return '75% start'
+  if (topAtEnd <= vh * 0.75) return '75% start'
   const endLine = Math.min(Math.ceil(topAtEnd), vh - 1)
   return `${endLine}px start`
 }
@@ -46,6 +45,19 @@ const useScrollReveal = (rootRef, deps = []) => {
       frameId = requestAnimationFrame(tick)
     }
 
+    const syncTargets = () => {
+      let pending = false
+      items.forEach((item) => {
+        if (!item.scroller.ready) {
+          pending = true
+          return
+        }
+        item.target = item.scroller.progress
+      })
+      if (pending && alive) requestAnimationFrame(syncTargets)
+      kick()
+    }
+
     root.querySelectorAll('[data-reveal]').forEach((el) => {
       const item = { target: 0, current: 0 }
       item.anim = animate(el, {
@@ -59,17 +71,19 @@ const useScrollReveal = (rootRef, deps = []) => {
         target: el,
         enter: 'end start',
         leave: () => leaveFor(el),
-        onUpdate: (self) => {
-          item.target = self.progress
-          kick()
-        },
       })
       items.push(item)
     })
 
+    syncTargets()
+    window.addEventListener('scroll', syncTargets, { passive: true })
+    window.addEventListener('resize', syncTargets)
+
     return () => {
       alive = false
       cancelAnimationFrame(frameId)
+      window.removeEventListener('scroll', syncTargets)
+      window.removeEventListener('resize', syncTargets)
       items.forEach((item) => {
         item.anim.revert()
         item.scroller.revert()

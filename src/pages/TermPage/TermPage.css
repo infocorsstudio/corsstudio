@@ -49,6 +49,7 @@
 }
 
 .term-index {
-  font-size: var(--font-xxs);
+  font-size: var(--font-l);
+  line-height: 1;
   color: var(--color-theme);
 }

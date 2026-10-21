@@ -24,7 +24,7 @@ const AboutPage = () => {
           ))}
         </div>
         <Link className="about-terms" to="/term">
-          Term and Condition
+        Terms and Conditions
         </Link>
       </section>
     </div>
