@@ -14,3 +14,12 @@ export const fillButton = (el, over) => {
     ease: 'out(4)',
   })
 }
+
+// Icon color only. Same 400ms out(4) curve as fillButton.
+export const tintIcon = (el, over) => {
+  animate(el, {
+    backgroundColor: over ? cssVar('--color-theme') : cssVar('--color-text'),
+    duration: 400,
+    ease: 'out(4)',
+  })
+}

@@ -12,6 +12,54 @@
   padding: calc(var(--header-height) + var(--gap-l)) var(--gap-l) var(--gap-l);
 }
 
+.about-social {
+  position: absolute;
+  z-index: 1;
+  left: var(--gap-l);
+  bottom: var(--gap-l);
+  display: flex;
+  gap: var(--gap-s);
+}
+
+.about-social-link {
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  background-color: var(--color-text);
+}
+
+.about-social-email {
+  -webkit-mask: url(/assets/icons/email.svg) center / contain no-repeat;
+  mask: url(/assets/icons/email.svg) center / contain no-repeat;
+}
+
+.about-social-instagram {
+  -webkit-mask: url(/assets/icons/instagram.svg) center / contain no-repeat;
+  mask: url(/assets/icons/instagram.svg) center / contain no-repeat;
+}
+
+button.about-social-link {
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.about-copied {
+  position: fixed;
+  inset: 0;
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(252, 252, 252, 0.35);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+.about-copied p {
+  font-size: var(--font-m);
+}
+
 .about-terms-wrap {
   position: absolute;
   z-index: 1;
@@ -59,6 +107,12 @@
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
+  }
+
+  .about-social {
+    position: static;
+    align-self: flex-start;
+    margin-top: var(--gap-l);
   }
 
   .about-terms-wrap {

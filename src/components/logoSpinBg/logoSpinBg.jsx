@@ -10,12 +10,12 @@ const VIEW_W = 64.3
 const VIEW_H = 29.42
 
 const LOGO_WORLD_WIDTH = 7
-const INITIAL_ANGLE = (275 * Math.PI) / 180
-const SPIN = 0.2
+const INITIAL_ANGLE = (20 * Math.PI) / 180
+const SPIN = 0.05
 const CAMERA_Z = 4
-const EXTRUDE = 0.3
+const EXTRUDE = 0.2
 // HeroHalftone line gray, rgb(229, 229, 229).
-const GRAY = 229 / 255
+const GRAY = 235 / 255
 
 const logoSpinBg = () => {
   const mountRef = useRef(null)

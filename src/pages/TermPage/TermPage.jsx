@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import './TermPage.css'
 import { useSiteContent } from '../../data/siteContent'
 import useScrollReveal from '../../hooks/useScrollReveal'
+import LogoSpinBg from '../../components/logoSpinBg/logoSpinBg'
 
 const TermPage = () => {
   const site = useSiteContent()
@@ -10,6 +11,7 @@ const TermPage = () => {
 
   return (
     <div className="term-page" ref={pageRef}>
+      <LogoSpinBg />
       {site && (
         <>
           <section className="term-section">

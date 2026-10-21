@@ -3,6 +3,7 @@ import './OpencallPage.css'
 import { useSiteContent } from '../../data/siteContent'
 import useScrollReveal from '../../hooks/useScrollReveal'
 import { fillButton } from '../../buttonHover'
+import LogoSpinBg from '../../components/logoSpinBg/logoSpinBg'
 
 const lookingFor = {
   lead: 'Issue 001 invites artists, designers, writers, and photographers at any stage of their practice to submit work that responds to one of its three sections: Almost Human, The Other Side, or Something Is Missing.',
@@ -47,7 +48,8 @@ const OpencallPage = () => {
 
   return (
     <div className="opencall-page" ref={pageRef}>
-      <section className="opencall-section opencall-hero">
+      <LogoSpinBg />
+      <section className="opencall-section opencall-hero opencall-intro">
         {site && (
           <>
             <img

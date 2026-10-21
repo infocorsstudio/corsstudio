@@ -17,7 +17,7 @@ const leaveFor = (el) => {
 }
 
 const SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789~!@#$%^&*()+=;:<>?/|'
-const SCRAMBLE_MS = 600
+const SCRAMBLE_MS = 1000
 const SCRAMBLE_FRAME = 1000 / 40
 
 const textNodesIn = (el) => {
@@ -67,7 +67,7 @@ const useScrollReveal = (rootRef, deps = []) => {
       if (!alive) return
       let moving = false
       items.forEach((item) => {
-        item.current = item.target + (item.current - item.target) * STEP
+        item.current += (item.target - item.current) * STEP
         if (Math.abs(item.target - item.current) < 0.001) item.current = item.target
         else moving = true
         item.anim.seek(item.anim.duration * item.current)

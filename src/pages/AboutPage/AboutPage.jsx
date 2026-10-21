@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import './AboutPage.css'
 import LogoSpinBg from '../../components/logoSpinBg/logoSpinBg'
-import { fillButton } from '../../buttonHover'
+import { fillButton, tintIcon } from '../../buttonHover'
 
 const aboutParagraphs = [
   'CORS Studio is an independent creative studio founded by Yuehan Ma and Yichen Ji.',
@@ -13,9 +14,31 @@ const aboutParagraphs = [
   'Whether we are developing a publication, building an identity, or working with a client on a commissioned project, we approach design as a process of connection—between disciplines, contexts, audiences, and ideas.',
 ]
 
-const tagline = 'Across origins, beyond boundaries'
+const tagline = 'Cross-Origin Resource Sharing'
+const EMAIL = 'info@corsstudio.com'
 
 const AboutPage = () => {
+  const [copied, setCopied] = useState(false)
+
+  const copyEmail = () => {
+    const pending = navigator.clipboard.writeText(EMAIL)
+    const area = document.createElement('textarea')
+    area.value = EMAIL
+    area.setAttribute('readonly', '')
+    area.style.position = 'fixed'
+    area.style.left = '-9999px'
+    document.body.appendChild(area)
+    area.focus()
+    area.select()
+    const ok = document.execCommand('copy')
+    area.remove()
+    if (ok) {
+      setCopied(true)
+      return
+    }
+    pending.then(() => setCopied(true)).catch(() => {})
+  }
+
   return (
     <div className="about-page">
       <section className="about-section-1">
@@ -25,6 +48,25 @@ const AboutPage = () => {
             <p key={text}>{text}</p>
           ))}
           <p className="about-tagline">{tagline}</p>
+        </div>
+        <div className="about-social">
+          <button
+            type="button"
+            className="about-social-link about-social-email"
+            aria-label="Email"
+            onClick={copyEmail}
+            onMouseEnter={(e) => tintIcon(e.currentTarget, true)}
+            onMouseLeave={(e) => tintIcon(e.currentTarget, false)}
+          />
+          <a
+            className="about-social-link about-social-instagram"
+            href="https://www.instagram.com/corsstudio/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instagram"
+            onMouseEnter={(e) => tintIcon(e.currentTarget, true)}
+            onMouseLeave={(e) => tintIcon(e.currentTarget, false)}
+          />
         </div>
         <div className="about-terms-wrap">
           <Link
@@ -37,6 +79,11 @@ const AboutPage = () => {
           </Link>
         </div>
       </section>
+      {copied && (
+        <div className="about-copied" onClick={() => setCopied(false)}>
+          <p>The email has been copied to the clipboard.</p>
+        </div>
+      )}
     </div>
   )
 }
