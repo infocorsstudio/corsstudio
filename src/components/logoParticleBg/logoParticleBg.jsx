@@ -40,8 +40,8 @@ const SWIRL_SPEED = 1.4 // how fast repelled particles orbit the mouse
 const INITIAL_ANGLE_DEG = 275 // e.g. 30, 90, 180
 const INITIAL_ANGLE = (INITIAL_ANGLE_DEG * Math.PI) / 180
 
-const CAMERA_Z = 10
-const CAMERA_ZOOM_Z = 4 // z when the scatter finishes (smaller = closer)
+const CAMERA_Z = 8
+const CAMERA_ZOOM_Z = 3 // z when the scatter finishes (smaller = closer)
 // Same inertia as the hero intro onScroll sync (0.4): lower = more lag
 const SCATTER_SYNC = 0.5
 

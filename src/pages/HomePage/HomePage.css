@@ -93,6 +93,10 @@
     max-width: none;
   }
 
+  .hero-intro {
+    text-align: left;
+  }
+
   .current-event {
     flex-direction: column;
     height: auto;

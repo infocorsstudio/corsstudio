@@ -15,7 +15,8 @@ const MOBILE_DISTANCE = 380 // phone: pull the camera back so the cloth sits sma
 const DEFAULT_FOCAL = 25 // camera focal length (mm)
 const DEFAULT_CLOTH_SCALE_X = 1 // cloth width multiplier
 const DEFAULT_CLOTH_SCALE_Y = 1 // cloth height multiplier (initial, before texture loads)
-const HEIGHT_GRAVITY_COMP = 0.7 // shrink height a bit to offset gravity stretch (<1)
+const HEIGHT_GRAVITY_COMP = 0.8 // shrink height a bit to offset gravity stretch (<1)
+const MOBILE_HEIGHT_GRAVITY_COMP = 0.9 // phone only: coarser grid sags less, so shrink less
 const DEFAULT_STIFFNESS = 1 // constraint stiffness (0 = soft, 1 = fully rigid)
 const TOP_ANCHOR_Y = 40 // vertical world offset of the fixed top edge (+ up / - down)
 
@@ -23,11 +24,13 @@ const TOP_ANCHOR_Y = 40 // vertical world offset of the fixed top edge (+ up / -
 const DAMPING = 0.04
 const DRAG = 1 - DAMPING
 const MASS = 0.1
-const restDistance = 16
-const xSegs = 20
-const ySegs = 16
-const clothWidth = restDistance * xSegs
-const clothHeight = restDistance * ySegs
+const REST = 16
+const X_SEGS = 20
+const Y_SEGS = 16
+const MOBILE_X_SEGS = 10
+const MOBILE_Y_SEGS = 8
+const clothWidth = REST * X_SEGS
+const clothHeight = REST * Y_SEGS
 
 const GRAVITY = 981 * 1.4
 const TIMESTEP = 18 / 1000
@@ -74,9 +77,10 @@ class Particle {
   }
 }
 
-const index = (u, v) => u + v * (xSegs + 1)
+const index = (u, v, xSegs) => u + v * (xSegs + 1)
 
-const buildCloth = () => {
+const buildCloth = (xSegs, ySegs) => {
+  const rest = clothWidth / xSegs
   const particles = []
   const constraints = []
   for (let v = 0; v <= ySegs; v++) {
@@ -87,15 +91,23 @@ const buildCloth = () => {
   // Structural constraints
   for (let v = 0; v < ySegs; v++) {
     for (let u = 0; u < xSegs; u++) {
-      constraints.push([particles[index(u, v)], particles[index(u, v + 1)], restDistance])
-      constraints.push([particles[index(u, v)], particles[index(u + 1, v)], restDistance])
+      constraints.push([particles[index(u, v, xSegs)], particles[index(u, v + 1, xSegs)], rest])
+      constraints.push([particles[index(u, v, xSegs)], particles[index(u + 1, v, xSegs)], rest])
     }
   }
   for (let v = 0; v < ySegs; v++) {
-    constraints.push([particles[index(xSegs, v)], particles[index(xSegs, v + 1)], restDistance])
+    constraints.push([
+      particles[index(xSegs, v, xSegs)],
+      particles[index(xSegs, v + 1, xSegs)],
+      rest,
+    ])
   }
   for (let u = 0; u < xSegs; u++) {
-    constraints.push([particles[index(u, ySegs)], particles[index(u + 1, ySegs)], restDistance])
+    constraints.push([
+      particles[index(u, ySegs, xSegs)],
+      particles[index(u + 1, ySegs, xSegs)],
+      rest,
+    ])
   }
   return { particles, constraints }
 }
@@ -138,6 +150,12 @@ const ClothScene = () => {
     dir.position.set(0, 1, 1)
     scene.add(dir)
 
+    const viewW = mount.clientWidth || window.innerWidth
+    const phone = viewW <= MOBILE_MAX
+    const xSegs = phone ? MOBILE_X_SEGS : X_SEGS
+    const ySegs = phone ? MOBILE_Y_SEGS : Y_SEGS
+    const heightComp = phone ? MOBILE_HEIGHT_GRAVITY_COMP : HEIGHT_GRAVITY_COMP
+
     // Cloth mesh
     const clothGeometry = new ParametricGeometry(clothFunction, xSegs, ySegs)
     const clothTexture = new THREE.TextureLoader().load(
@@ -148,7 +166,7 @@ const ClothScene = () => {
         if (img && img.width) {
           const imgRatio = img.height / img.width
           autoScaleYRef.current =
-            imgRatio * (clothWidth / clothHeight) * HEIGHT_GRAVITY_COMP
+            imgRatio * (clothWidth / clothHeight) * heightComp
         }
       }
     )
@@ -194,7 +212,7 @@ const ClothScene = () => {
     // mouseSphere.visible = false
     // clothMesh.add(mouseSphere)
 
-    const { particles, constraints } = buildCloth()
+    const { particles, constraints } = buildCloth(xSegs, ySegs)
 
     const gravity = new THREE.Vector3(0, -GRAVITY, 0).multiplyScalar(MASS)
     const windForce = new THREE.Vector3()
@@ -301,7 +319,7 @@ const ClothScene = () => {
 
       // Pin the top row so the cloth hangs and flutters.
       for (let u = 0; u <= xSegs; u++) {
-        const p = particles[index(u, ySegs)]
+        const p = particles[index(u, ySegs, xSegs)]
         p.position.copy(p.original)
         p.previous.copy(p.original)
       }
