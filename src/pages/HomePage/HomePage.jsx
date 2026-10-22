@@ -17,7 +17,6 @@ const HomePage = () => {
   const site = useSiteContent()
   const currentEventRef = useRef(null)
   const [showCloth, setShowCloth] = useState(false)
-
   // Create the cloth WebGL context only once the current event's top reaches
   // the bottom of the viewport, so shader compile stays off the opening frame.
   useEffect(() => {

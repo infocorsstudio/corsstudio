@@ -12,7 +12,7 @@ const MOON1_CUT =
 const MOON2_SOLID =
   'M33.42,4.77c5.45,5.04,12.29,12.05,14.89,15.65c.29.4.55.78.79,1.15c2.1,3.18,2.75,5.52,1.64,6.73c-3.98,4.36-22.82-4-50.75-23.36Z'
 const MOON2_CUT =
-  'M-.01,4.94c22.89,15.72,38.97,19.51,41.58,16.89c.36-.36.55-.86.61-1.41c.06-.48.03-1.03-.12-1.64c-.62-2.67-4.57-9.53-8.64-14.02Z'
+  'M-.01,4.94c22.89,15.72,38.97,19.51,41.58,16.89c.36-.36.55-.86.61-1.41c.06-.48.03-1.03-.12-1.64c-.62-2.67-4.57-9.53-8.64-14.02L33.8,3L-.6,3.2L-.6,4.94Z'
 
 const LogoReveal = ({ className, color = '#e60000' }) => {
   const id = useId().replace(/:/g, '')
@@ -26,27 +26,26 @@ const LogoReveal = ({ className, color = '#e60000' }) => {
     const svg = svgRef.current
     const rect = svg.getBoundingClientRect()
     const scale = Math.min(rect.width / VIEW_W, rect.height / VIEW_H) || 1
-    // Offsets in SVG user units that push a shape fully past each viewport edge.
-    const left = -(rect.right / scale + 2)
+    // Offsets in SVG user units that push a shape fully past the viewport edge.
     const right = (window.innerWidth - rect.left) / scale + 2
-    const top = -(rect.bottom / scale + 2)
-    const bottom = (window.innerHeight - rect.top) / scale + 2
+    const diag = -(Math.min(rect.right, rect.bottom) / scale + 2)
 
     utils.set(svg, { color: '#000' })
-    utils.set(solid1.current, { translateX: left })
-    utils.set(cut1.current, { translateX: right })
-    utils.set(solid2.current, { translateY: bottom })
-    utils.set(cut2.current, { translateY: top })
+    utils.set([solid1.current, cut1.current], { translateX: right })
+    utils.set([solid2.current, cut2.current], {
+      translateX: diag,
+      translateY: diag,
+    })
 
     const tl = createTimeline({
       delay: 300,
       defaults: { duration: 1000, ease: 'inOutQuart' },
     })
       .add(solid1.current, { translateX: 0 })
-      .add(cut1.current, { translateX: 0 }, '+=100')
-      .add(solid2.current, { translateY: 0 }, '+=100')
-      .add(cut2.current, { translateY: 0 }, '+=100')
-      .add(svg, { color, duration: 600, ease: 'outQuad' }, '+=150')
+      .add(cut1.current, { translateX: 0 }, '-=900')
+      .add(solid2.current, { translateX: 0, translateY: 0 }, '-=700')
+      .add(cut2.current, { translateX: 0, translateY: 0 }, '-=900')
+      .add(svg, { color, duration: 600, ease: 'outQuad' }, '+=50')
 
     return () => tl.revert()
   }, [color])
