@@ -13,6 +13,14 @@ const FLIP_MS = 780
 // --- Scene tuning (all optional knobs layered on top of turngl's defaults) ---
 // Ambient (global fill) brightness, relative to turngl's light preset. Lower = darker.
 const AMBIENT_SCALE = 0.93
+// Key light (the shadow-casting directional) brightness. 1 = turngl default.
+const KEY_SCALE = 1
+// Fill light (the side point light) brightness. 1 = turngl default.
+const FILL_SCALE = 1
+// Light color temperatures in Kelvin. Lower = warmer (orange), higher = cooler (blue).
+// ~5500K is neutral daylight; turngl's look is a warm key + cool fill.
+const KEY_KELVIN = 6500
+const FILL_KELVIN = 7600
 // How far the book leans toward the cursor. 1 = turngl default, 0 = locked straight.
 const TILT = 1
 // Camera field of view in degrees. Smaller = flatter/less perspective; larger = deeper.
@@ -21,6 +29,9 @@ const CAMERA_FOV = 22
 const SPREAD_ASPECT = 1.5
 // Spine thickness (3D width). turngl's default is 0.04; lower = thinner.
 const SPINE_WIDTH = 0.005
+
+// Total leaves in the book (cover + content + back cover).
+const PAGE_COUNT = 30
 
 const sections = [
   ['I. Almost Human', 'Where does the human end, and something else begin?'],
@@ -83,6 +94,17 @@ const textPage = (theme, title, lines) => {
   return canvas
 }
 
+// A big, faint page number centered on the leaf — handy for tracking flips.
+const numberPage = (n) => {
+  const { canvas, ctx } = blankPage()
+  ctx.fillStyle = '#dcdcdc'
+  ctx.font = '700 180px Inter, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(String(n), PAGE_W / 2, PAGE_H / 2)
+  return canvas
+}
+
 const buildPages = async () => {
   const theme =
     getComputedStyle(document.documentElement).getPropertyValue('--color-theme').trim() ||
@@ -92,17 +114,71 @@ const buildPages = async () => {
     loadImage('/assets/works/issue001/issue001_opencall1_poster.jpg'),
     document.fonts.ready,
   ])
-  return [
+  const pages = [
     imagePage(cover),
     textPage(theme, 'CORS Issue 001 / Spring 2027', sections.map(([title]) => title)),
     ...sections.map(([title, question]) => textPage(theme, title, [question])),
     imagePage(poster),
     textPage(theme, 'Open Call', ['Open calls for each section will be announced in due course.']),
-    textPage(theme, 'CORS Studio', ['Across origins, beyond boundaries.']),
   ]
+  // Pad with numbered leaves, reserving the final slot for the back cover.
+  let n = 1
+  while (pages.length < PAGE_COUNT - 1) pages.push(numberPage(n++))
+  pages.push(textPage(theme, 'CORS Studio', ['Across origins, beyond boundaries.']))
+  return pages
 }
 
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max)
+
+// Smoother than turngl's built-in easeInOutQuad. Taps use the symmetric S-curve;
+// a release already carries momentum, so it only decelerates (easeOut).
+const easeInOutCubic = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
+const easeOutCubic = (p) => 1 - Math.pow(1 - p, 3)
+
+// Zero slope at both ends, so the bent region blends into the flat page without a crease.
+const smoothstep = (x) => {
+  const c = clamp(x, 0, 1)
+  return c * c * (3 - 2 * c)
+}
+
+// A gentler replacement for turngl's curl: same cylindrical roll, but the bend angle
+// uses smoothstep instead of a hard clamp, removing the arc-meets-straight-line kink.
+// CURL_SPREAD widens how much of the page is mid-bend (larger = softer, longer arc).
+const CURL_SPREAD = 0.34
+const curlPage = (book, t, dir) => {
+  const geom = book.flipGeom
+  const pos = geom.attributes.position
+  const nx = book._nx
+  const oy = book._oy
+  const PW = book.PW
+  for (let i = 0; i < pos.count; i++) {
+    const l = dir === 'fwd' ? nx[i] + 0.5 : 0.5 - nx[i]
+    const p = l * PW
+    const angle = smoothstep(1.25 * t - 0.125 + (l - 0.5) * CURL_SPREAD) * Math.PI
+    pos.setX(i, (dir === 'fwd' ? 1 : -1) * p * Math.cos(angle))
+    pos.setZ(i, p * Math.sin(angle))
+    pos.setY(i, oy[i])
+  }
+  pos.needsUpdate = true
+  geom.computeVertexNormals()
+}
+
+// Tanner Helland's blackbody approximation: Kelvin -> an sRGB hex for THREE.Color.set.
+const kelvinToHex = (kelvin) => {
+  const t = clamp(kelvin, 1000, 40000) / 100
+  let r, g, b
+  if (t <= 66) {
+    r = 255
+    g = 99.4708025861 * Math.log(t) - 161.1195681661
+    b = t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307
+  } else {
+    r = 329.698727446 * Math.pow(t - 60, -0.1332047592)
+    g = 288.1221695283 * Math.pow(t - 60, -0.0755148492)
+    b = 255
+  }
+  const ch = (v) => clamp(Math.round(v), 0, 255)
+  return (ch(r) << 16) | (ch(g) << 8) | ch(b)
+}
 
 const MagazineBook = () => {
   const mountRef = useRef(null)
@@ -128,9 +204,17 @@ const MagazineBook = () => {
     book.renderer.outputColorSpace = LinearSRGBColorSpace
     book.scene.traverse((o) => {
       if (!o.isLight) return
-      // The ambient light is the global fill; dim it on its own so the shaped
-      // key/point lights keep their contrast.
-      o.intensity *= o.isAmbientLight ? Math.PI * AMBIENT_SCALE : Math.PI
+      // Each light gets its own scale/color on top of the Math.PI legacy-lighting
+      // fix: ambient is the global fill, the directional is the key, the point is the fill.
+      if (o.isAmbientLight) {
+        o.intensity *= Math.PI * AMBIENT_SCALE
+      } else if (o.isDirectionalLight) {
+        o.intensity *= Math.PI * KEY_SCALE
+        o.color.set(kelvinToHex(KEY_KELVIN))
+      } else {
+        o.intensity *= Math.PI * FILL_SCALE
+        o.color.set(kelvinToHex(FILL_KELVIN))
+      }
       // Pages sit 0.06 above the floor; the default 0.5–500 shadow depth range can't
       // resolve that, so pages shadow themselves and the floor shadow is lost.
       if (o.castShadow) {
@@ -149,6 +233,10 @@ const MagazineBook = () => {
       mesh.castShadow = true
       mesh.material.shadowSide = DoubleSide
     }
+    // Static pages receiveShadow, but the turning leaf does not, so a page "pops"
+    // brighter the instant it lifts. Let the leaf receive shadows too for a smooth hand-off.
+    book.flipF.receiveShadow = true
+    book.flipB.receiveShadow = true
     // turngl hardcodes fov 26 in its constructor; resize only touches aspect,
     // so overriding it once here sticks.
     book.camera.fov = CAMERA_FOV
@@ -166,7 +254,7 @@ const MagazineBook = () => {
       const h = mount.clientHeight
       if (!w || !h) return
       book.resize(w, h)
-      book.setZoom(Math.min(1, w / h / SPREAD_ASPECT))
+      book.setZoom(Math.min(0.85, w / h / SPREAD_ASPECT))
     }
     resize()
     const observer = new ResizeObserver(resize)
@@ -205,16 +293,27 @@ const MagazineBook = () => {
       return next
     }
 
+    let flipRaf = 0
     const settle = (dir, next, from, to) => {
       busy = true
-      const duration = to === 1 ? Math.max(120, (1 - from) * FLIP_MS) : Math.max(80, from * 400)
-      book.animate(from, to, duration, (p) => book.curl(p, dir), () => {
+      // A tap starts from rest (ease in+out); a release carries speed (ease out only).
+      const ease = from === 0 ? easeInOutCubic : easeOutCubic
+      const duration = to === 1 ? Math.max(260, (1 - from) * FLIP_MS) : Math.max(200, from * 520)
+      const start = performance.now()
+      const frame = (now) => {
         if (!alive) return
+        const t = Math.min(1, (now - start) / duration)
+        curlPage(book, from + (to - from) * ease(t), dir)
+        if (t < 1) {
+          flipRaf = requestAnimationFrame(frame)
+          return
+        }
         book.endFlip()
         if (to === 1) spread = next
         show(spread)
         busy = false
-      })
+      }
+      flipRaf = requestAnimationFrame(frame)
     }
 
     const toLocal = (e) => {
@@ -242,7 +341,7 @@ const MagazineBook = () => {
       const travel = drag.dir === 'fwd' ? drag.startX - p.x : p.x - drag.startX
       drag.progress = clamp(travel * 2.2, 0, 1)
       if (Math.abs(p.x - drag.startX) > 0.01) drag.moved = true
-      book.curl(drag.progress, drag.dir)
+      curlPage(book, drag.progress, drag.dir)
     }
 
     // A tap turns the page; a drag only commits past 30%.
@@ -267,6 +366,7 @@ const MagazineBook = () => {
 
     return () => {
       alive = false
+      cancelAnimationFrame(flipRaf)
       observer.disconnect()
       canvas.removeEventListener('pointerdown', onDown)
       canvas.removeEventListener('pointermove', onMove)
