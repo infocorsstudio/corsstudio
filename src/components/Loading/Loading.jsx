@@ -1,5 +1,6 @@
-import { useId, useLayoutEffect, useRef } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { createTimeline, utils } from 'animejs'
+import './Loading.css'
 
 const VIEW_W = 64.3
 const VIEW_H = 29.42
@@ -14,8 +15,10 @@ const MOON2_SOLID =
 const MOON2_CUT =
   'M-.01,4.94c22.89,15.72,38.97,19.51,41.58,16.89c.36-.36.55-.86.61-1.41c.06-.48.03-1.03-.12-1.64c-.62-2.67-4.57-9.53-8.64-14.02L33.8,3L-.6,3.2L-.6,4.94Z'
 
-const LogoReveal = ({ className, color = '#e60000' }) => {
+const Loading = ({ color = '#e60000', onComplete }) => {
   const id = useId().replace(/:/g, '')
+  const [done, setDone] = useState(false)
+  const rootRef = useRef(null)
   const svgRef = useRef(null)
   const solid1 = useRef(null)
   const cut1 = useRef(null)
@@ -23,6 +26,11 @@ const LogoReveal = ({ className, color = '#e60000' }) => {
   const cut2 = useRef(null)
 
   useLayoutEffect(() => {
+    if (done) return
+    const html = document.documentElement
+    const prevOverflow = html.style.overflow
+    html.style.overflow = 'hidden'
+
     const svg = svgRef.current
     const rect = svg.getBoundingClientRect()
     const scale = Math.min(rect.width / VIEW_W, rect.height / VIEW_H) || 1
@@ -40,43 +48,54 @@ const LogoReveal = ({ className, color = '#e60000' }) => {
     const tl = createTimeline({
       delay: 300,
       defaults: { duration: 1000, ease: 'inOutQuart' },
+      onComplete: () => {
+        setDone(true)
+        onComplete?.()
+      },
     })
       .add(solid1.current, { translateX: 0 })
       .add(cut1.current, { translateX: 0 }, '-=900')
       .add(solid2.current, { translateX: 0, translateY: 0 }, '-=700')
       .add(cut2.current, { translateX: 0, translateY: 0 }, '-=900')
       .add(svg, { color, duration: 600, ease: 'outQuad' }, '+=50')
+      .add(rootRef.current, { opacity: 0, duration: 500, ease: 'outQuad' }, '+=400')
 
-    return () => tl.revert()
-  }, [color])
+    return () => {
+      tl.revert()
+      html.style.overflow = prevOverflow
+    }
+  }, [color, done])
+
+  if (done) return null
 
   const maskRect = { x: -10000, y: -10000, width: 20000, height: 20000 }
 
   return (
-    <svg
-      ref={svgRef}
-      className={className}
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-      style={{ overflow: 'visible' }}
-    >
-      <defs>
-        <mask id={`${id}-m1`} maskUnits="userSpaceOnUse" {...maskRect}>
-          <rect {...maskRect} fill="#fff" />
-          <path ref={cut1} d={MOON1_CUT} fill="#000" />
-        </mask>
-        <mask id={`${id}-m2`} maskUnits="userSpaceOnUse" {...maskRect}>
-          <rect {...maskRect} fill="#fff" />
-          <path ref={cut2} d={MOON2_CUT} fill="#000" />
-        </mask>
-      </defs>
-      <g mask={`url(#${id}-m1)`}>
-        <path ref={solid1} d={MOON1_SOLID} fill="currentColor" />
-      </g>
-      <g mask={`url(#${id}-m2)`}>
-        <path ref={solid2} d={MOON2_SOLID} fill="currentColor" />
-      </g>
-    </svg>
+    <div className="loading" ref={rootRef}>
+      <svg
+        ref={svgRef}
+        className="loading-logo"
+        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      >
+        <defs>
+          <mask id={`${id}-m1`} maskUnits="userSpaceOnUse" {...maskRect}>
+            <rect {...maskRect} fill="#fff" />
+            <path ref={cut1} d={MOON1_CUT} fill="#000" />
+          </mask>
+          <mask id={`${id}-m2`} maskUnits="userSpaceOnUse" {...maskRect}>
+            <rect {...maskRect} fill="#fff" />
+            <path ref={cut2} d={MOON2_CUT} fill="#000" />
+          </mask>
+        </defs>
+        <g mask={`url(#${id}-m1)`}>
+          <path ref={solid1} d={MOON1_SOLID} fill="currentColor" />
+        </g>
+        <g mask={`url(#${id}-m2)`}>
+          <path ref={solid2} d={MOON2_SOLID} fill="currentColor" />
+        </g>
+      </svg>
+    </div>
   )
 }
 
-export default LogoReveal
+export default Loading

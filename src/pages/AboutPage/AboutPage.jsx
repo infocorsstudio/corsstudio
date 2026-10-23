@@ -19,7 +19,6 @@ const EMAIL = 'info@corsstudio.com'
 
 const AboutPage = () => {
   const [copied, setCopied] = useState(false)
-
   const copyEmail = () => {
     const pending = navigator.clipboard.writeText(EMAIL)
     const area = document.createElement('textarea')
