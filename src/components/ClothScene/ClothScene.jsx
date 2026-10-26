@@ -15,7 +15,7 @@ const MOBILE_DISTANCE = 380 // phone: pull the camera back so the cloth sits sma
 const DEFAULT_FOCAL = 25 // camera focal length (mm)
 const DEFAULT_CLOTH_SCALE_X = 1 // cloth width multiplier
 const DEFAULT_CLOTH_SCALE_Y = 1 // cloth height multiplier (initial, before texture loads)
-const HEIGHT_GRAVITY_COMP = 0.8 // shrink height a bit to offset gravity stretch (<1)
+const HEIGHT_GRAVITY_COMP = 0.73 // shrink height a bit to offset gravity stretch (<1)
 const MOBILE_HEIGHT_GRAVITY_COMP = 0.9 // phone only: coarser grid sags less, so shrink less
 const DEFAULT_STIFFNESS = 1 // constraint stiffness (0 = soft, 1 = fully rigid)
 const TOP_ANCHOR_Y = 40 // vertical world offset of the fixed top edge (+ up / - down)
