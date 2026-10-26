@@ -14,8 +14,6 @@ const INITIAL_ANGLE = (20 * Math.PI) / 180
 const SPIN = 0.05
 const CAMERA_Z = 4
 const EXTRUDE = 0.2
-// HeroHalftone line gray, rgb(229, 229, 229).
-const GRAY = 235 / 255
 
 const logoSpinBg = () => {
   const mountRef = useRef(null)
@@ -50,10 +48,13 @@ const logoSpinBg = () => {
     )
     const scale = LOGO_WORLD_WIDTH / (box.max.x - box.min.x)
 
+    const gray =
+      getComputedStyle(document.documentElement).getPropertyValue('--color-gray').trim() ||
+      '#ebebeb'
     const mesh = new THREE.Mesh(
       geometry,
       new THREE.MeshBasicMaterial({
-        color: new THREE.Color(GRAY, GRAY, GRAY),
+        color: new THREE.Color(gray),
         side: THREE.DoubleSide,
       })
     )

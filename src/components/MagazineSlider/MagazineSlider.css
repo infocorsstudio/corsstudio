@@ -1,0 +1,60 @@
+/* Floats over the book canvas; only the handle takes pointer input. */
+.magazine-slider {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--gap-l);
+  width: min(600px, 80%);
+  height: 2rem;
+  margin: 0 auto;
+  pointer-events: none;
+}
+
+.magazine-slider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 6px;
+  transform: translateY(-50%);
+  background: var(--color-gray);
+}
+
+.magazine-slider-handle {
+  /* 把柄大小只改 --handle-w，高度按 svg 比例跟着变 */
+  --handle-w: 4rem;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: var(--handle-w);
+  height: calc(var(--handle-w) * 53.87 / 156.92);
+  margin-top: calc(var(--handle-w) * 53.87 / 156.92 / -2);
+  font-family: 'Inter', sans-serif;
+  font-size: var(--font-s);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.magazine-slider-mark {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform-origin: center;
+}
+
+.magazine-slider-crescent {
+  fill: var(--color-theme);
+}
+
+.magazine-slider-label {
+  position: relative;
+  z-index: 1;
+  color: var(--color-theme);
+  font-weight: 400;
+}

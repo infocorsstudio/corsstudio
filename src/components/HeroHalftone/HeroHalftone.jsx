@@ -6,7 +6,13 @@ const THIN = 0.8
 const THICK_FROM = 3
 const THICK_TO = 6
 const WORD_SCALE_TO = 2.5
-const GRAY = 229
+// Shared with the logo model; falls back if the stylesheet has not applied yet.
+const grayByte = () => {
+  const hex = getComputedStyle(document.documentElement).getPropertyValue('--color-gray').trim()
+  const n = parseInt(hex.slice(1, 3), 16)
+  return Number.isFinite(n) ? n : 235
+}
+const GRAY = grayByte()
 const MOBILE_MAX = 800
 
 // Parallel 45° lines covering the viewport. Built once per resize.

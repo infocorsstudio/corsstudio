@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
-import { DoubleSide, LinearSRGBColorSpace } from 'three'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { CanvasTexture, DoubleSide, LinearSRGBColorSpace, Mesh } from 'three'
+import { animate } from 'animejs'
 import { Book3D } from 'turngl'
 import './MagazineBook.css'
 
@@ -9,6 +10,12 @@ const PAGE_HEIGHT_3D = 2.33
 const PAGE_W = 744
 const PAGE_H = 930
 const FLIP_MS = 780
+// A leaf still turning when the next press arrives finishes at this pace (ms per full turn).
+const HURRY_MS = 300
+// Slider scrubbing: the book's position chases the slider, closing the gap with this
+// time constant (smaller = snappier), and never slower than SCRUB_MIN_SPEED spreads/s.
+const SCRUB_TAU_MS = 45
+const SCRUB_MIN_SPEED = 3
 
 // --- Scene tuning (all optional knobs layered on top of turngl's defaults) ---
 // Ambient (global fill) brightness, relative to turngl's light preset. Lower = darker.
@@ -32,100 +39,40 @@ const SPINE_WIDTH = 0.005
 
 // Total leaves in the book (cover + content + back cover).
 const PAGE_COUNT = 30
+// Every page also gets a copy at this fraction of full size: scrubbing turns pages
+// faster than full-size textures can be rendered and uploaded.
+const LOW_RES_SCALE = 0.2
 
-const sections = [
-  ['I. Almost Human', 'Where does the human end, and something else begin?'],
-  ['II. The Other Side', 'What exists beyond the boundaries we know?'],
-  ['III. Something Is Missing', 'How do we recognize something through its absence?'],
-]
+// Cover and back cover wrap numbered pages 1 … PAGE_COUNT - 2.
+const pageLabel = (i) => {
+  if (i === 0) return ['cover', 120]
+  if (i === PAGE_COUNT - 1) return ['back cover', 96]
+  return [String(i), 180]
+}
 
-const loadImage = (src) =>
-  new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    img.src = src
-  })
-
-const blankPage = () => {
+// Draws page `i` at `scale` × full size. May return a promise, so a PDF renderer
+// can drop in here.
+const renderPage = (i, scale) => {
+  const [text, size] = pageLabel(i)
   const canvas = document.createElement('canvas')
-  canvas.width = PAGE_W
-  canvas.height = PAGE_H
+  canvas.width = Math.round(PAGE_W * scale)
+  canvas.height = Math.round(PAGE_H * scale)
   const ctx = canvas.getContext('2d')
+  ctx.scale(scale, scale)
   ctx.fillStyle = '#fcfcfc'
   ctx.fillRect(0, 0, PAGE_W, PAGE_H)
-  return { canvas, ctx }
-}
-
-const imagePage = (img) => {
-  const { canvas, ctx } = blankPage()
-  const scale = Math.max(PAGE_W / img.width, PAGE_H / img.height)
-  const w = img.width * scale
-  const h = img.height * scale
-  ctx.drawImage(img, (PAGE_W - w) / 2, (PAGE_H - h) / 2, w, h)
-  return canvas
-}
-
-const wrap = (ctx, text, x, y, maxWidth, lineHeight) => {
-  let line = ''
-  for (const word of text.split(' ')) {
-    const next = line ? `${line} ${word}` : word
-    if (line && ctx.measureText(next).width > maxWidth) {
-      ctx.fillText(line, x, y)
-      line = word
-      y += lineHeight
-    } else {
-      line = next
-    }
-  }
-  if (line) ctx.fillText(line, x, y)
-}
-
-const textPage = (theme, title, lines) => {
-  const { canvas, ctx } = blankPage()
-  const pad = 56
-  ctx.fillStyle = theme
-  ctx.font = '700 44px Inter, sans-serif'
-  ctx.textBaseline = 'top'
-  wrap(ctx, title, pad, pad, PAGE_W - pad * 2, 54)
-  ctx.fillStyle = '#0e0e0e'
-  ctx.font = '400 24px Inter, sans-serif'
-  lines.forEach((text, i) => wrap(ctx, text, pad, 220 + i * 120, PAGE_W - pad * 2, 32))
-  return canvas
-}
-
-// A big, faint page number centered on the leaf — handy for tracking flips.
-const numberPage = (n) => {
-  const { canvas, ctx } = blankPage()
-  ctx.fillStyle = '#dcdcdc'
-  ctx.font = '700 180px Inter, sans-serif'
+  ctx.fillStyle =
+    getComputedStyle(document.documentElement).getPropertyValue('--color-gray').trim() || '#ebebeb'
+  ctx.font = `700 ${size}px Inter, sans-serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(String(n), PAGE_W / 2, PAGE_H / 2)
+  ctx.fillText(text, PAGE_W / 2, PAGE_H / 2)
   return canvas
 }
 
-const buildPages = async () => {
-  const theme =
-    getComputedStyle(document.documentElement).getPropertyValue('--color-theme').trim() ||
-    '#e60000'
-  const [cover, poster] = await Promise.all([
-    loadImage('/assets/works/issue001/issue001_poster.jpg'),
-    loadImage('/assets/works/issue001/issue001_opencall1_poster.jpg'),
-    document.fonts.ready,
-  ])
-  const pages = [
-    imagePage(cover),
-    textPage(theme, 'CORS Issue 001 / Spring 2027', sections.map(([title]) => title)),
-    ...sections.map(([title, question]) => textPage(theme, title, [question])),
-    imagePage(poster),
-    textPage(theme, 'Open Call', ['Open calls for each section will be announced in due course.']),
-  ]
-  // Pad with numbered leaves, reserving the final slot for the back cover.
-  let n = 1
-  while (pages.length < PAGE_COUNT - 1) pages.push(numberPage(n++))
-  pages.push(textPage(theme, 'CORS Studio', ['Across origins, beyond boundaries.']))
-  return pages
+const loadLowRes = async () => {
+  await document.fonts.ready
+  return Promise.all(Array.from({ length: PAGE_COUNT }, (_, i) => renderPage(i, LOW_RES_SCALE)))
 }
 
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max)
@@ -145,8 +92,7 @@ const smoothstep = (x) => {
 // uses smoothstep instead of a hard clamp, removing the arc-meets-straight-line kink.
 // CURL_SPREAD widens how much of the page is mid-bend (larger = softer, longer arc).
 const CURL_SPREAD = 0.34
-const curlPage = (book, t, dir) => {
-  const geom = book.flipGeom
+const curlPage = (book, t, dir, geom = book.flipGeom) => {
   const pos = geom.attributes.position
   const nx = book._nx
   const oy = book._oy
@@ -180,8 +126,21 @@ const kelvinToHex = (kelvin) => {
   return (ch(r) << 16) | (ch(g) << 8) | ch(b)
 }
 
-const MagazineBook = () => {
+const MagazineBook = forwardRef(({ onSpreadChange }, ref) => {
   const mountRef = useRef(null)
+  const apiRef = useRef(null)
+  const onSpreadChangeRef = useRef(onSpreadChange)
+  onSpreadChangeRef.current = onSpreadChange
+
+  // scrub(s) follows a fractional spread (the slider mid-drag); goTo(s) lands on one.
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrub: (s) => apiRef.current?.scrub(s),
+      goTo: (s) => apiRef.current?.goTo(s),
+    }),
+    [],
+  )
 
   useEffect(() => {
     const mount = mountRef.current
@@ -237,6 +196,19 @@ const MagazineBook = () => {
     // brighter the instant it lifts. Let the leaf receive shadows too for a smooth hand-off.
     book.flipF.receiveShadow = true
     book.flipB.receiveShadow = true
+    // turngl has a single turning leaf. This copy takes over a leaf that's still in the
+    // air when the next turn starts, so both can move at once.
+    const ghostGeom = book.flipGeom.clone()
+    const ghostLeaf = [book.flipF, book.flipB].map((src) => {
+      const material = src.material.clone()
+      material.map = new CanvasTexture(book._blankCanvas())
+      const mesh = new Mesh(ghostGeom, material)
+      mesh.castShadow = src.castShadow
+      mesh.receiveShadow = src.receiveShadow
+      mesh.visible = false
+      book.scene.add(mesh)
+      return mesh
+    })
     // turngl hardcodes fov 26 in its constructor; resize only touches aspect,
     // so overriding it once here sticks.
     book.camera.fov = CAMERA_FOV
@@ -247,6 +219,54 @@ const MagazineBook = () => {
     if (spine) {
       spine.scale.y = book.PH / (book.PH + 0.02)
       spine.scale.x = SPINE_WIDTH / 0.04
+    }
+
+    // Cover and back cover are a single page, so the book slides until that page
+    // sits on the camera's center. Spreads stay on the spine.
+    const shifted = [book.meshL, book.meshR, book.flipF, book.flipB, ...ghostLeaf, spine].filter(
+      Boolean,
+    )
+    const baseX = new Map(shifted.map((mesh) => [mesh, mesh.position.x]))
+    const shiftState = { x: 0 }
+    let shiftAnim = null
+    let shiftSpread = -1
+    let shiftTarget = 0
+    const applyShift = (x) => {
+      shiftState.x = x
+      for (const mesh of shifted) mesh.position.x = baseX.get(mesh) + x
+    }
+    const shiftFor = (s) => {
+      const half = book.PW / 2
+      if (s <= 0) return -half
+      if (s >= lastSpread()) return half
+      return 0
+    }
+    const aimShift = (s, duration = FLIP_MS) => {
+      const next = clamp(Math.round(s), 0, lastSpread())
+      if (next === shiftSpread) return
+      shiftSpread = next
+      const x = shiftFor(next)
+      // Every spread between the covers shares x = 0; restarting a run already
+      // heading there would cut it off mid-ease.
+      if (Math.abs(x - shiftTarget) < 1e-4 && (shiftAnim || Math.abs(x - shiftState.x) < 1e-4)) {
+        return
+      }
+      shiftTarget = x
+      shiftAnim?.cancel()
+      shiftAnim = null
+      if (duration <= 0) {
+        applyShift(x)
+        return
+      }
+      shiftAnim = animate(shiftState, {
+        x,
+        duration,
+        ease: 'inOutCubic',
+        onUpdate: () => applyShift(shiftState.x),
+        onComplete: () => {
+          shiftAnim = null
+        },
+      })
     }
 
     const resize = () => {
@@ -261,13 +281,19 @@ const MagazineBook = () => {
     observer.observe(mount)
 
     // Spread 0 is the lone cover on the right; after that pages pair up.
-    let pages = []
+    let lowRes = []
+    // Full-size pages around the current spread; null while one is rendering.
+    const highRes = new Map()
     let spread = 0
     let busy = false
     let drag = null
-    const leftOf = (s) => pages[2 * s - 1] ?? null
-    const rightOf = (s) => pages[2 * s] ?? null
-    const lastSpread = () => Math.floor(pages.length / 2)
+    const pageAt = (i, fast) => {
+      if (i < 0 || i >= lowRes.length) return null
+      return (!fast && highRes.get(i)) || lowRes[i]
+    }
+    const leftOf = (s, fast) => pageAt(2 * s - 1, fast)
+    const rightOf = (s, fast) => pageAt(2 * s, fast)
+    const lastSpread = () => Math.floor(lowRes.length / 2)
 
     const show = (s) => {
       book.showSpread(leftOf(s), rightOf(s))
@@ -275,46 +301,236 @@ const MagazineBook = () => {
       book.meshR.visible = !!rightOf(s)
     }
 
+    // Keeps full-size pages for spread `s` and its neighbours (what a tap turns to)
+    // and drops the rest, repainting the spread as its pages arrive.
+    const loadNear = (s) => {
+      const keep = new Set()
+      for (let i = Math.max(0, 2 * s - 3); i <= Math.min(lowRes.length - 1, 2 * s + 2); i++) {
+        keep.add(i)
+      }
+      for (const i of highRes.keys()) if (!keep.has(i)) highRes.delete(i)
+      for (const i of keep) {
+        if (highRes.has(i)) continue
+        highRes.set(i, null)
+        Promise.resolve(renderPage(i, 1)).then((page) => {
+          if (!alive || !highRes.has(i)) return
+          highRes.set(i, page)
+          if (!busy && !drag && (i === 2 * spread - 1 || i === 2 * spread)) show(spread)
+        })
+      }
+    }
+
     // prepFlip hides the static page under the turning leaf, so the next spread's
     // page is put back there before the turn starts.
-    const begin = (dir) => {
-      const next = dir === 'fwd' ? spread + 1 : spread - 1
+    const begin = (dir, from = spread, fast = false) => {
+      const next = dir === 'fwd' ? from + 1 : from - 1
+      const L = (s) => leftOf(s, fast)
+      const R = (s) => rightOf(s, fast)
       if (dir === 'fwd') {
-        book.showSpread(leftOf(spread), rightOf(next))
-        book.prepFlip('fwd', rightOf(spread), leftOf(next))
-        book.meshL.visible = !!leftOf(spread)
-        book.meshR.visible = !!rightOf(next)
+        book.showSpread(L(from), R(next))
+        book.prepFlip('fwd', R(from), L(next))
+        book.meshL.visible = !!L(from)
+        book.meshR.visible = !!R(next)
       } else {
-        book.showSpread(leftOf(next), rightOf(spread))
-        book.prepFlip('bwd', leftOf(spread), rightOf(next))
-        book.meshL.visible = !!leftOf(next)
-        book.meshR.visible = !!rightOf(spread)
+        book.showSpread(L(next), R(from))
+        book.prepFlip('bwd', L(from), R(next))
+        book.meshL.visible = !!L(next)
+        book.meshR.visible = !!R(from)
       }
       return next
     }
 
+    const report = (s = spread) => onSpreadChangeRef.current?.(s, lastSpread())
+
+    // A leaf handed to the ghost keeps turning, faster, while the next turn starts.
+    let ghost = null
+    const setPage = (mesh, page) => {
+      book._setTex(mesh.material, page ?? book._blankCanvas())
+      mesh.visible = !!page
+    }
+    const landGhost = () => {
+      if (!ghost) return
+      const g = ghost
+      ghost = null
+      cancelAnimationFrame(g.raf)
+      for (const mesh of ghostLeaf) mesh.visible = false
+      // The page it lands on is the one the current turn started from.
+      if (g.dir === 'fwd') setPage(book.meshL, leftOf(g.next))
+      else setPage(book.meshR, rightOf(g.next))
+    }
+    const swapMap = (a, b) => {
+      const map = a.map
+      a.map = b.map
+      b.map = map
+      a.needsUpdate = b.needsUpdate = true
+    }
+
     let flipRaf = 0
+    // The turn currently playing out, so a second press can hurry it along.
+    let flipJob = null
+    const commitFlip = () => {
+      landGhost()
+      if (!flipJob) return
+      const job = flipJob
+      flipJob = null
+      cancelAnimationFrame(flipRaf)
+      book.endFlip()
+      if (job.to === 1) spread = job.next
+      busy = false
+      show(spread)
+      report()
+      loadNear(spread)
+    }
+    // Moves the turning leaf to the ghost and lets it finish quickly. Returns the
+    // page that must stay under it until it lands.
+    const handOff = () => {
+      landGhost()
+      const job = flipJob
+      flipJob = null
+      cancelAnimationFrame(flipRaf)
+      swapMap(ghostLeaf[0].material, book.flipF.material)
+      swapMap(ghostLeaf[1].material, book.flipB.material)
+      for (const mesh of ghostLeaf) mesh.visible = true
+      spread = job.next
+      busy = false
+      const g = (ghost = { dir: job.dir, next: job.next, raf: 0 })
+      const from = job.p
+      const duration = Math.max(120, (1 - from) * HURRY_MS)
+      const start = performance.now()
+      const frame = (now) => {
+        if (!alive || ghost !== g) return
+        const t = Math.min(1, (now - start) / duration)
+        curlPage(book, from + (1 - from) * easeOutCubic(t), g.dir, ghostGeom)
+        if (t < 1) g.raf = requestAnimationFrame(frame)
+        else landGhost()
+      }
+      curlPage(book, from, g.dir, ghostGeom)
+      g.raf = requestAnimationFrame(frame)
+      return job.dir === 'fwd' ? leftOf(job.origin) : rightOf(job.origin)
+    }
+    const canTurn = (dir, s) => (dir === 'fwd' ? s < lastSpread() : s > 0)
+    // A press during a turn: the same direction hurries that leaf and starts the next
+    // one alongside it; anything else lands it at once. Returns false if no turn fits.
+    const startTurn = (dir, start) => {
+      const job = flipJob
+      if (busy && job?.to === 1 && job.dir === dir) {
+        if (!canTurn(dir, job.next)) return false
+        const under = handOff()
+        start()
+        setPage(dir === 'fwd' ? book.meshL : book.meshR, under)
+        return true
+      }
+      if (busy) commitFlip()
+      if (!canTurn(dir, spread)) return false
+      start()
+      return true
+    }
     const settle = (dir, next, from, to) => {
       busy = true
+      const origin = dir === 'fwd' ? next - 1 : next + 1
+      const job = (flipJob = { dir, next, origin, to, p: from })
       // A tap starts from rest (ease in+out); a release carries speed (ease out only).
       const ease = from === 0 ? easeInOutCubic : easeOutCubic
       const duration = to === 1 ? Math.max(260, (1 - from) * FLIP_MS) : Math.max(200, from * 520)
+      if (to === 1) aimShift(next, duration)
       const start = performance.now()
       const frame = (now) => {
-        if (!alive) return
+        if (!alive || flipJob !== job) return
         const t = Math.min(1, (now - start) / duration)
-        curlPage(book, from + (to - from) * ease(t), dir)
+        const p = from + (to - from) * ease(t)
+        job.p = p
+        curlPage(book, p, dir)
+        // Reporting every frame lets the slider handle leave with the page.
+        if (to === 1) report(origin + (next - origin) * p)
         if (t < 1) {
           flipRaf = requestAnimationFrame(frame)
           return
         }
+        landGhost()
         book.endFlip()
         if (to === 1) spread = next
-        show(spread)
+        flipJob = null
         busy = false
+        report()
+        show(spread)
+        loadNear(spread)
+        if (scrubTarget !== null) scrub(scrubTarget)
       }
       flipRaf = requestAnimationFrame(frame)
     }
+
+    // Slider scrubbing: `pos` (a fractional spread) chases the slider, and the leaf
+    // between floor(pos) and floor(pos) + 1 is curled by the fraction in between.
+    // Leaves are set up with low-res pages; full-size ones load once it stops.
+    let scrubTarget = null
+    let scrubbing = false
+    let pos = 0
+    let leaf = null
+    let scrubRaf = 0
+    let lastTime = 0
+
+    const finishScrub = () => {
+      book.endFlip()
+      leaf = null
+      scrubbing = false
+      scrubTarget = null
+      busy = false
+      show(spread)
+      loadNear(spread)
+    }
+
+    const scrubFrame = (now) => {
+      scrubRaf = 0
+      if (!alive) return
+      const dt = Math.min(now - lastTime, 50)
+      lastTime = now
+      const diff = scrubTarget - pos
+      const move = Math.max(
+        Math.abs(diff) * (1 - Math.exp(-dt / SCRUB_TAU_MS)),
+        (SCRUB_MIN_SPEED * dt) / 1000,
+      )
+      pos = move >= Math.abs(diff) ? scrubTarget : pos + Math.sign(diff) * move
+
+      const n = Math.min(Math.floor(pos), lastSpread() - 1)
+      if (leaf?.n !== n) {
+        if (leaf) book.endFlip()
+        // The leaf keeps the direction it started in, even if the slider reverses.
+        const dir = diff > 0 ? 'fwd' : 'bwd'
+        leaf = { n, dir }
+        begin(dir, dir === 'fwd' ? n : n + 1, true)
+      }
+      const t = pos - n
+      curlPage(book, leaf.dir === 'fwd' ? t : 1 - t, leaf.dir)
+
+      if (Math.round(pos) !== spread) {
+        spread = Math.round(pos)
+        report()
+        aimShift(spread)
+      }
+      if (pos !== scrubTarget) scrubRaf = requestAnimationFrame(scrubFrame)
+      else if (Number.isInteger(pos)) finishScrub()
+    }
+
+    const scrub = (s) => {
+      if (!lowRes.length || drag) return
+      scrubTarget = clamp(s, 0, lastSpread())
+      // A tap/drag turn is finishing; settle() picks the target up afterwards.
+      if (busy && !scrubbing) return
+      if (!scrubbing) {
+        if (scrubTarget === spread) {
+          scrubTarget = null
+          return
+        }
+        scrubbing = true
+        busy = true
+        pos = spread
+      }
+      if (!scrubRaf) {
+        lastTime = performance.now()
+        scrubRaf = requestAnimationFrame(scrubFrame)
+      }
+    }
+    apiRef.current = { scrub, goTo: (s) => scrub(Math.round(s)) }
 
     const toLocal = (e) => {
       const r = canvas.getBoundingClientRect()
@@ -322,12 +538,13 @@ const MagazineBook = () => {
     }
 
     const onDown = (e) => {
-      if (busy || !pages.length) return
+      if (!lowRes.length || scrubbing || drag) return
       const { x } = toLocal(e)
       const dir = x > 0 ? 'fwd' : 'bwd'
-      if (dir === 'fwd' && spread >= lastSpread()) return
-      if (dir === 'bwd' && spread <= 0) return
-      drag = { dir, startX: x, progress: 0, moved: false, next: begin(dir) }
+      const started = startTurn(dir, () => {
+        drag = { dir, startX: x, progress: 0, moved: false, next: begin(dir) }
+      })
+      if (!started) return
       canvas.setPointerCapture(e.pointerId)
       canvas.classList.add('is-dragging')
     }
@@ -353,25 +570,46 @@ const MagazineBook = () => {
       settle(d.dir, d.next, d.progress, !d.moved || d.progress > 0.3 ? 1 : 0)
     }
 
+    const turn = (dir) => {
+      if (drag || scrubbing || !lowRes.length) return
+      startTurn(dir, () => settle(dir, begin(dir), 0, 1))
+    }
+    const onKey = (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      const tag = e.target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return
+      e.preventDefault()
+      turn(e.key === 'ArrowRight' ? 'fwd' : 'bwd')
+    }
+
     canvas.addEventListener('pointerdown', onDown)
     canvas.addEventListener('pointermove', onMove)
     canvas.addEventListener('pointerup', onUp)
     canvas.addEventListener('pointercancel', onUp)
+    window.addEventListener('keydown', onKey)
 
-    buildPages().then((built) => {
+    loadLowRes().then((pages) => {
       if (!alive) return
-      pages = built
+      lowRes = pages
+      aimShift(spread, 0)
       show(spread)
+      loadNear(spread)
+      report()
     })
 
     return () => {
       alive = false
+      apiRef.current = null
       cancelAnimationFrame(flipRaf)
+      cancelAnimationFrame(scrubRaf)
+      if (ghost) cancelAnimationFrame(ghost.raf)
+      shiftAnim?.cancel()
       observer.disconnect()
       canvas.removeEventListener('pointerdown', onDown)
       canvas.removeEventListener('pointermove', onMove)
       canvas.removeEventListener('pointerup', onUp)
       canvas.removeEventListener('pointercancel', onUp)
+      window.removeEventListener('keydown', onKey)
       book.dispose()
       book.renderer.forceContextLoss()
       canvas.remove()
@@ -379,6 +617,6 @@ const MagazineBook = () => {
   }, [])
 
   return <div ref={mountRef} className="magazine-book" />
-}
+})
 
 export default MagazineBook
