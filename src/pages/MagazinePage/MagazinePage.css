@@ -6,15 +6,10 @@
 .magazine-hero {
   width: 100vw;
   height: 100vh;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.magazine-section-2 {
-  width: 100vw;
-  height: 100vh;
-  position: relative;
 }
 
 .magazine-hero-text {
