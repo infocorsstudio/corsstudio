@@ -38,9 +38,11 @@
   align-self: flex-start;
   padding: var(--gap-xxs) var(--gap-s);
   color: var(--color-text);
-  background: var(--color-background);
+  background: transparent;
   text-decoration: none;
-  border: 1px solid var(--color-text);
+  border: 1px solid var(--color-theme);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .home-hero {

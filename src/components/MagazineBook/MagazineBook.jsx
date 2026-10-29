@@ -34,26 +34,34 @@ const TILT = 1
 const CAMERA_FOV = 22
 // Open spread width over visible height; larger pulls the camera back (smaller book).
 const SPREAD_ASPECT = 1.5
+// Phone layout, same breakpoint as the rest of the site. The book stays a single
+// page: odd pages are blank, and the camera distance is MOBILE_CAM_Z (larger = farther).
+const PHONE_MAX = 800
+const MOBILE_CAM_Z = 10.5
 // Spine thickness (3D width). turngl's default is 0.04; lower = thinner.
 const SPINE_WIDTH = 0.005
 
-// Total leaves in the book (cover + content + back cover).
+// Desktop leaves (cover + pages 1…28 + back cover), shown as two-page spreads.
 const PAGE_COUNT = 30
+// Phone is one sheet per turn, so the same 28 pages plus both covers make 30 sheets.
+const PHONE_PAGE_COUNT = 58
 // Every page also gets a copy at this fraction of full size: scrubbing turns pages
 // faster than full-size textures can be rendered and uploaded.
 const LOW_RES_SCALE = 0.2
 
-// Cover and back cover wrap numbered pages 1 … PAGE_COUNT - 2.
-const pageLabel = (i) => {
+// Cover and back cover wrap the numbered pages.
+// On a phone only the even leaves show, numbered 1, 2, 3… in turn order.
+const pageLabel = (i, phone, count) => {
   if (i === 0) return ['cover', 120]
-  if (i === PAGE_COUNT - 1) return ['back cover', 96]
+  if (i === count - 1) return ['back cover', 96]
+  if (phone && i % 2 === 0) return [String(i / 2), 180]
   return [String(i), 180]
 }
 
 // Draws page `i` at `scale` × full size. May return a promise, so a PDF renderer
 // can drop in here.
-const renderPage = (i, scale) => {
-  const [text, size] = pageLabel(i)
+const renderPage = (i, scale, phone, count) => {
+  const [text, size] = pageLabel(i, phone, count)
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(PAGE_W * scale)
   canvas.height = Math.round(PAGE_H * scale)
@@ -70,9 +78,12 @@ const renderPage = (i, scale) => {
   return canvas
 }
 
-const loadLowRes = async () => {
+const loadLowRes = async (phone) => {
+  const count = phone ? PHONE_PAGE_COUNT : PAGE_COUNT
   await document.fonts.ready
-  return Promise.all(Array.from({ length: PAGE_COUNT }, (_, i) => renderPage(i, LOW_RES_SCALE)))
+  return Promise.all(
+    Array.from({ length: count }, (_, i) => renderPage(i, LOW_RES_SCALE, phone, count)),
+  )
 }
 
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max)
@@ -222,7 +233,9 @@ const MagazineBook = forwardRef(({ onSpreadChange }, ref) => {
     }
 
     // Cover and back cover are a single page, so the book slides until that page
-    // sits on the camera's center. Spreads stay on the spine.
+    // sits on the camera's center. Spreads stay on the spine. On a phone the
+    // right page stays centered the whole way, so opening the cover doesn't slide.
+    let phone = window.matchMedia(`(max-width: ${PHONE_MAX}px)`).matches
     const shifted = [book.meshL, book.meshR, book.flipF, book.flipB, ...ghostLeaf, spine].filter(
       Boolean,
     )
@@ -239,6 +252,7 @@ const MagazineBook = forwardRef(({ onSpreadChange }, ref) => {
       const half = book.PW / 2
       if (s <= 0) return -half
       if (s >= lastSpread()) return half
+      if (phone) return -half
       return 0
     }
     const aimShift = (s, duration = FLIP_MS) => {
@@ -269,12 +283,20 @@ const MagazineBook = forwardRef(({ onSpreadChange }, ref) => {
       })
     }
 
+    // Assigned once the spread can be redrawn. The first resize only sets the camera.
+    let reloadPages = () => {}
+    let refreshLayout = () => {}
     const resize = () => {
       const w = mount.clientWidth
       const h = mount.clientHeight
       if (!w || !h) return
       book.resize(w, h)
-      book.setZoom(Math.min(0.85, w / h / SPREAD_ASPECT))
+      const nextPhone = w <= PHONE_MAX
+      if (nextPhone) book._camZ = MOBILE_CAM_Z
+      else book.setZoom(Math.min(0.85, w / h / SPREAD_ASPECT))
+      if (nextPhone === phone) return
+      phone = nextPhone
+      refreshLayout()
     }
     resize()
     const observer = new ResizeObserver(resize)
@@ -287,8 +309,15 @@ const MagazineBook = forwardRef(({ onSpreadChange }, ref) => {
     let spread = 0
     let busy = false
     let drag = null
+    const blank = document.createElement('canvas')
+    blank.width = PAGE_W
+    blank.height = PAGE_H
+    blank.getContext('2d').fillStyle = '#fcfcfc'
+    blank.getContext('2d').fillRect(0, 0, PAGE_W, PAGE_H)
     const pageAt = (i, fast) => {
       if (i < 0 || i >= lowRes.length) return null
+      // Phone reads one page: the odd leaf (left side) is blank, evens keep their text.
+      if (phone && i % 2 === 1 && i !== lowRes.length - 1) return blank
       return (!fast && highRes.get(i)) || lowRes[i]
     }
     const leftOf = (s, fast) => pageAt(2 * s - 1, fast)
@@ -300,10 +329,18 @@ const MagazineBook = forwardRef(({ onSpreadChange }, ref) => {
       book.meshL.visible = !!leftOf(s)
       book.meshR.visible = !!rightOf(s)
     }
+    refreshLayout = () => {
+      shiftSpread = -1
+      aimShift(spread, 0)
+      reloadPages()
+    }
 
+    // Which layout the loaded canvases were drawn for. A resize drops the other set.
+    let drawnFor = phone
     // Keeps full-size pages for spread `s` and its neighbours (what a tap turns to)
     // and drops the rest, repainting the spread as its pages arrive.
     const loadNear = (s) => {
+      const single = drawnFor
       const keep = new Set()
       for (let i = Math.max(0, 2 * s - 3); i <= Math.min(lowRes.length - 1, 2 * s + 2); i++) {
         keep.add(i)
@@ -312,8 +349,8 @@ const MagazineBook = forwardRef(({ onSpreadChange }, ref) => {
       for (const i of keep) {
         if (highRes.has(i)) continue
         highRes.set(i, null)
-        Promise.resolve(renderPage(i, 1)).then((page) => {
-          if (!alive || !highRes.has(i)) return
+        Promise.resolve(renderPage(i, 1, single, single ? PHONE_PAGE_COUNT : PAGE_COUNT)).then((page) => {
+          if (!alive || drawnFor !== single || !highRes.has(i)) return
           highRes.set(i, page)
           if (!busy && !drag && (i === 2 * spread - 1 || i === 2 * spread)) show(spread)
         })
@@ -588,14 +625,22 @@ const MagazineBook = forwardRef(({ onSpreadChange }, ref) => {
     canvas.addEventListener('pointercancel', onUp)
     window.addEventListener('keydown', onKey)
 
-    loadLowRes().then((pages) => {
-      if (!alive) return
-      lowRes = pages
-      aimShift(spread, 0)
-      show(spread)
-      loadNear(spread)
-      report()
-    })
+    reloadPages = () => {
+      const single = phone
+      drawnFor = single
+      highRes.clear()
+      loadLowRes(single).then((pages) => {
+        if (!alive || drawnFor !== single) return
+        lowRes = pages
+        spread = clamp(spread, 0, lastSpread())
+        shiftSpread = -1
+        aimShift(spread, 0)
+        show(spread)
+        loadNear(spread)
+        report()
+      })
+    }
+    reloadPages()
 
     return () => {
       alive = false

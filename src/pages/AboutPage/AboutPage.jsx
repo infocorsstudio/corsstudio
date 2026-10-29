@@ -71,6 +71,7 @@ const AboutPage = () => {
           <Link
             className="about-terms"
             to="/term"
+            data-fill="solid"
             onMouseEnter={(e) => fillButton(e.currentTarget, true)}
             onMouseLeave={(e) => fillButton(e.currentTarget, false)}
           >

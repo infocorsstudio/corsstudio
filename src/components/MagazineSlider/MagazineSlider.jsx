@@ -15,11 +15,14 @@ const HOVER_EASE = 'out(4)'
 const cssVar = (name) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 
-// The handle shows the spread's left page number. The ends stay C and D,
-// including while the handle is pulled slightly past the track.
-const pageLabel = (s, last) => {
+// The handle shows the spread's left page number. On a phone the visible page
+// is numbered 1, 2, 3… in the order you turn. The ends stay C and D, including
+// while the handle is pulled slightly past the track.
+const pageLabel = (s, last, phone) => {
   const n = Math.min(last, Math.max(0, Math.round(s)))
-  return n === 0 ? 'C' : n === last ? 'D' : n * 2 - 1
+  if (n === 0) return 'C'
+  if (n === last) return 'D'
+  return phone ? n : n * 2 - 1
 }
 
 const setHover = (handle, over) => {
@@ -53,6 +56,7 @@ const MagazineSlider = forwardRef(({ spread, lastSpread, onScrub, onChange }, re
   const [preview, setPreview] = useState(null)
   const [sliding, setSliding] = useState(false)
   const [hot, setHot] = useState(false)
+  const [phone, setPhone] = useState(() => window.matchMedia('(max-width: 800px)').matches)
   const previewRef = useRef(null)
   previewRef.current = preview
   const onChangeRef = useRef(onChange)
@@ -63,6 +67,13 @@ const MagazineSlider = forwardRef(({ spread, lastSpread, onScrub, onChange }, re
   spreadRef.current = spread
   // The spread whose position the draggable's own transform currently holds.
   const baseRef = useRef(0)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 800px)')
+    const onChange = () => setPhone(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
 
   useEffect(() => {
     const track = trackRef.current
@@ -164,7 +175,7 @@ const MagazineSlider = forwardRef(({ spread, lastSpread, onScrub, onChange }, re
             d="M156.92,26.93c0,14.7-36.04,26.64-80.96,26.94,36.91-.37,66.47-12.28,66.47-26.94S112.86.37,75.96,0c44.92.3,80.96,12.23,80.96,26.93Z"
           />
         </svg>
-        <span className="magazine-slider-label">{pageLabel(preview ?? spread, lastSpread)}</span>
+        <span className="magazine-slider-label">{pageLabel(preview ?? spread, lastSpread, phone)}</span>
       </div>
     </div>
   )
