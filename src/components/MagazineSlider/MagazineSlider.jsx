@@ -11,6 +11,17 @@ const HOVER_HANDLE_REM = 4.5
 // Same timing as the Open Call "Apply Now" button.
 const HOVER_MS = 400
 const HOVER_EASE = 'out(4)'
+// A calm turn streams a continuous spread, and the handle follows it. A burst of
+// taps or arrow keys jumps that value onto the next spread, then the new turn
+// eases in from a standstill, so the handle steps. Glide aims at the end of the
+// latest turn and keeps its speed across further jumps. Speeds are spreads/second.
+const GLIDE_JUMP = 0.25
+// While taps are still arriving the handle keeps this pace, so it doesn't brake
+// at every spread. It eases out only after the destination has settled.
+const GLIDE_BURST_MS = 140
+const GLIDE_BURST_SPEED = 4.5
+const GLIDE_MAX_SPEED = 7
+const GLIDE_VEL_MS = 90
 
 const cssVar = (name) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim()
@@ -65,8 +76,23 @@ const MagazineSlider = forwardRef(({ spread, lastSpread, onScrub, onChange }, re
   onScrubRef.current = onScrub
   const spreadRef = useRef(spread)
   spreadRef.current = spread
+  const lastSpreadRef = useRef(lastSpread)
+  lastSpreadRef.current = lastSpread
   // The spread whose position the draggable's own transform currently holds.
   const baseRef = useRef(0)
+  // `goal` is the latest spread the book reported; `shown` is where the handle is.
+  const goalRef = useRef(spread)
+  const shownRef = useRef(spread)
+  const destRef = useRef(spread)
+  const destAtRef = useRef(0)
+  const glideDirRef = useRef(0)
+  const glidingRef = useRef(false)
+  const velRef = useRef(0)
+  const chaseRef = useRef(0)
+  const lastTickRef = useRef(0)
+  const [visual, setVisual] = useState(spread)
+  const visualRef = useRef(spread)
+  const chaseCtl = useRef({ stop() {} })
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 800px)')
@@ -96,27 +122,56 @@ const MagazineSlider = forwardRef(({ spread, lastSpread, onScrub, onChange }, re
       // quickly without bouncing; the defaults are 80 / 20.
       releaseStiffness: 400,
       releaseDamping: 40,
-      onGrab: () => {
+      onGrab: (d) => {
+        chaseCtl.current.stop()
         setSliding(true)
+        // `left` is the in-between offset; fold it into x so the handle doesn't jump.
+        const left = parseFloat(handle.style.left) || 0
+        const x = d.x + left
         handle.style.left = '0px'
+        d.setX(x, true)
+        const at = step() ? x / step() : 0
+        baseRef.current = at
+        shownRef.current = at
+        goalRef.current = at
+        destRef.current = at
+        velRef.current = 0
       },
       onDrag: (d) => {
         setPreview(indexOf(d.x))
         onScrubRef.current?.(spreadAt(d.x))
       },
       onRelease: (d) => {
+        chaseCtl.current.stop()
         setSliding(false)
         const target = indexOf(d.destX)
         baseRef.current = target
+        shownRef.current = target
+        goalRef.current = target
+        destRef.current = target
+        velRef.current = 0
+        handle.style.left = '0px'
+        if (target !== visualRef.current) {
+          visualRef.current = target
+          setVisual(target)
+        }
         setPreview(target === spreadRef.current ? null : target)
         onChangeRef.current?.(target)
       },
       onAfterResize: (d) => d.setX(spreadRef.current * step(), true),
     })
     draggable.setX(spreadRef.current * step(), true)
+    shownRef.current = spreadRef.current
+    goalRef.current = spreadRef.current
+    destRef.current = spreadRef.current
+    velRef.current = 0
     draggableRef.current = draggable
 
     return () => {
+      cancelAnimationFrame(chaseRef.current)
+      chaseRef.current = 0
+      glidingRef.current = false
+      velRef.current = 0
       draggable.revert()
       draggableRef.current = null
     }
@@ -124,21 +179,124 @@ const MagazineSlider = forwardRef(({ spread, lastSpread, onScrub, onChange }, re
 
   // The draggable owns `transform` and only shows a new value once it settles,
   // so a page turn moves the handle with `left` and hands back to it on landing.
+  // The draggable stays on the spread below `s`; `left` covers the fraction.
+  const place = (s) => {
+    const handle = handleRef.current
+    const d = draggableRef.current
+    if (!handle || !d) return
+    const last = lastSpreadRef.current
+    const at = Math.min(last, Math.max(0, s))
+    const step = stepRef.current()
+    const base = Math.min(last, Math.floor(at + 1e-4))
+    if (baseRef.current !== base) {
+      baseRef.current = base
+      d.setX(base * step, true)
+    }
+    const frac = at - base
+    handle.style.left = `${frac < 1e-4 ? 0 : frac * step}px`
+    const n = Math.round(at)
+    if (n !== visualRef.current) {
+      visualRef.current = n
+      setVisual(n)
+    }
+  }
+
+  const stopGlide = () => {
+    cancelAnimationFrame(chaseRef.current)
+    chaseRef.current = 0
+    glidingRef.current = false
+    velRef.current = 0
+  }
+  chaseCtl.current.stop = stopGlide
+
+  // Where this burst is heading: the spread the newest turn will land on.
+  const retarget = (s, dir) => {
+    const last = lastSpreadRef.current
+    let dest = dir > 0 ? Math.min(last, Math.floor(s) + 1) : Math.max(0, Math.ceil(s) - 1)
+    if (dir === glideDirRef.current) {
+      dest = dir > 0 ? Math.max(destRef.current, dest) : Math.min(destRef.current, dest)
+    } else {
+      glideDirRef.current = dir
+    }
+    if (dest !== destRef.current) destAtRef.current = performance.now()
+    destRef.current = dest
+  }
+
+  const tick = (now) => {
+    const d = draggableRef.current
+    if (!d || d.grabbed || previewRef.current !== null || !glidingRef.current) {
+      chaseRef.current = 0
+      return
+    }
+    const dt = Math.min(now - lastTickRef.current, 50)
+    lastTickRef.current = now
+    const dest = destRef.current
+    const diff = dest - shownRef.current
+    const ad = Math.abs(diff)
+    if (ad < 0.004) {
+      shownRef.current = dest
+      velRef.current = 0
+      place(dest)
+      chaseRef.current = 0
+      if (Math.abs(goalRef.current - dest) < 0.02) glidingRef.current = false
+      return
+    }
+    const burst = now - destAtRef.current < GLIDE_BURST_MS
+    const cruise = Math.min(GLIDE_MAX_SPEED, Math.max(GLIDE_BURST_SPEED, ad * 1.6))
+    const shaped = !burst && ad < 0.75 ? cruise * (0.35 + 0.65 * (ad / 0.75)) : cruise
+    const targetVel = Math.sign(diff) * shaped
+    velRef.current += (targetVel - velRef.current) * (1 - Math.exp(-dt / GLIDE_VEL_MS))
+    const step = velRef.current * (dt / 1000)
+    if (Math.abs(step) >= ad) {
+      shownRef.current = dest
+      velRef.current = 0
+    } else {
+      shownRef.current += step
+    }
+    place(shownRef.current)
+    chaseRef.current = requestAnimationFrame(tick)
+  }
+
+  const kick = () => {
+    if (chaseRef.current) return
+    lastTickRef.current = performance.now()
+    chaseRef.current = requestAnimationFrame(tick)
+  }
+
   useImperativeHandle(ref, () => ({
     moveTo(s) {
       const handle = handleRef.current
       const d = draggableRef.current
       if (!handle || !d || d.grabbed || previewRef.current !== null) return
-      const step = stepRef.current()
-      const nearest = Math.round(s)
-      if (Math.abs(s - nearest) < 1e-4) {
-        if (baseRef.current === nearest) return
-        baseRef.current = nearest
-        handle.style.left = '0px'
-        d.setX(nearest * step, true)
+      const prev = goalRef.current
+      const delta = s - prev
+      const jumped = Math.abs(delta) > GLIDE_JUMP && Math.abs(s - shownRef.current) > GLIDE_JUMP
+      goalRef.current = s
+      if (jumped) {
+        glidingRef.current = true
+        retarget(s, Math.sign(delta) || glideDirRef.current || 1)
+      } else if (glidingRef.current) {
+        const dir = glideDirRef.current
+        if (dir > 0 && s > destRef.current) retarget(s, dir)
+        else if (dir < 0 && s < destRef.current) retarget(s, dir)
+        if (
+          Math.abs(shownRef.current - destRef.current) < 0.01 &&
+          Math.abs(s - destRef.current) < 0.02
+        ) {
+          glidingRef.current = false
+          velRef.current = 0
+          shownRef.current = s
+          place(s)
+          return
+        }
+      }
+      if (!glidingRef.current) {
+        shownRef.current = s
+        velRef.current = 0
+        place(s)
         return
       }
-      handle.style.left = `${(s - baseRef.current) * step}px`
+      kick()
     },
   }), [])
 
@@ -175,7 +333,7 @@ const MagazineSlider = forwardRef(({ spread, lastSpread, onScrub, onChange }, re
             d="M156.92,26.93c0,14.7-36.04,26.64-80.96,26.94,36.91-.37,66.47-12.28,66.47-26.94S112.86.37,75.96,0c44.92.3,80.96,12.23,80.96,26.93Z"
           />
         </svg>
-        <span className="magazine-slider-label">{pageLabel(preview ?? spread, lastSpread, phone)}</span>
+        <span className="magazine-slider-label">{pageLabel(preview ?? visual, lastSpread, phone)}</span>
       </div>
     </div>
   )
