@@ -3,7 +3,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: var(--gap-l);
+  bottom: var(--gap-m);
   width: min(600px, 80%);
   height: 2rem;
   margin: 0 auto;
