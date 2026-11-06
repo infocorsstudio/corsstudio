@@ -1,0 +1,58 @@
+.site-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: var(--gap-s);
+  font-family: 'Inter', sans-serif;
+  font-size: var(--font-xs);
+}
+
+.site-footer-copy {
+  align-self: center;
+  color: var(--color-theme);
+}
+
+.site-footer-social {
+  display: flex;
+  gap: var(--gap-s);
+}
+
+.site-footer-link {
+  display: block;
+  width: 2.5rem;
+  height: auto;
+  aspect-ratio: 1;
+  background-color: var(--color-text);
+}
+
+.site-footer-email {
+  -webkit-mask: url(/assets/icons/email.svg) center / contain no-repeat;
+  mask: url(/assets/icons/email.svg) center / contain no-repeat;
+}
+
+.site-footer-instagram {
+  -webkit-mask: url(/assets/icons/instagram.svg) center / contain no-repeat;
+  mask: url(/assets/icons/instagram.svg) center / contain no-repeat;
+}
+
+button.site-footer-link {
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.site-footer-copied {
+  position: fixed;
+  inset: 0;
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(252, 252, 252, 0.35);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+.site-footer-copied p {
+  font-size: var(--font-m);
+}

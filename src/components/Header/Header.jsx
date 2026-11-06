@@ -118,7 +118,15 @@ const Header = () => {
   }
 
   return (
-    <header id="header" className={isHome ? 'header-home' : undefined}>
+    <>
+      <div id="headerBlur">
+        <div className="blur-layer blur-layer-1"></div>
+        <div className="blur-layer blur-layer-2"></div>
+        <div className="blur-layer blur-layer-3"></div>
+        <div className="blur-layer blur-layer-4"></div>
+        <div className="blur-layer blur-layer-5"></div>
+      </div>
+      <header id="header" className={isHome ? 'header-home' : undefined}>
       <nav id="navbar">
         {/* Left: studio name, links back to home */}
         <Link
@@ -153,6 +161,7 @@ const Header = () => {
         </div>
       </nav>
     </header>
+    </>
   )
 }
 

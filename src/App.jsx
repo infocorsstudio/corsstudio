@@ -6,6 +6,7 @@ import AboutPage from './pages/AboutPage/AboutPage'
 import OpencallPage from './pages/OpencallPage/OpencallPage'
 import TermPage from './pages/TermPage/TermPage'
 import Header from './components/Header/Header'
+import Footer from './components/Footer/Footer'
 import FaviconRotator from './components/FaviconRotator/FaviconRotator'
 import './App.css'
 
@@ -24,6 +25,7 @@ function App() {
           <Route path="/opencall" element={<OpencallPage />} />
           <Route path="/term" element={<TermPage />} />
         </Routes>
+        <Footer />
         <Analytics />
       </div>
     </Router>

@@ -4,6 +4,7 @@ import './HomePage.css'
 import HeroHalftone from '../../components/HeroHalftone/HeroHalftone'
 import LogoParticleBg from '../../components/logoParticleBg/logoParticleBg'
 import ClothScene from '../../components/ClothScene/ClothScene'
+import FeaturedWorks from '../../components/FeaturedWorks/FeaturedWorks'
 import { useSiteContent } from '../../data/siteContent'
 import { fillButton } from '../../buttonHover'
 
@@ -88,6 +89,9 @@ const HomePage = () => {
         </div>
       </section>
       <section className="home-section-2"></section>
+      <section className="home-section-3">
+        <FeaturedWorks />
+      </section>
       <section className="current-event" ref={currentEventRef}>
         <div className="cloth-canvas-wrap">
           {showCloth && <ClothScene />}
