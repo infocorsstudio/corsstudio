@@ -5,8 +5,6 @@ import './FeaturedWorks.css'
 // Fractions down the viewport. 0 is the top edge, 1 is the bottom edge.
 const FADE_IN_START = 0.5
 const FADE_IN_END = 0.4
-// How many times the shuffled list plays during one pass through section 3.
-const CYCLES = 3
 
 // Section top crossing 50% → 40% fades in. No fade out: the frame stays
 // centered until section 3's bottom edge pushes it off the screen.
@@ -57,7 +55,8 @@ const FeaturedWorks = () => {
       const start = section.offsetTop - vh
       const distance = section.offsetHeight + vh
       const p = Math.min(1, Math.max(0, (window.scrollY - start) / distance))
-      const next = Math.floor(p * slides.length * CYCLES) % slides.length
+      const count = slides.length
+      const next = Math.min(count - 1, Math.floor(p * count))
       frame.style.opacity = String(opacityFor(rect.top / vh))
       placeFrame(frame, rect.bottom)
       setIndex((prev) => (prev === next ? prev : next))
