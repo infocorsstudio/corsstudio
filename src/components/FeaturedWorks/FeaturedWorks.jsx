@@ -26,8 +26,12 @@ const placeFrame = (frame, sectionBottom) => {
 // One shuffled pass: each file appears once, then the scroll loops that order.
 const slides = (() => {
   const list = [...new Set(works)].map((src) => {
-    const name = decodeURIComponent(src.split('/').pop())
-    return { src, name }
+    const file = decodeURIComponent(src.split('/').pop() || '')
+    const base = file.replace(/\.[^.]+$/, '')
+    const splitAt = base.indexOf('_')
+    const author = splitAt === -1 ? base : base.slice(0, splitAt).trim()
+    const title = splitAt === -1 ? '' : base.slice(splitAt + 1).trim()
+    return { src, author, title }
   })
   for (let i = list.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -88,7 +92,7 @@ const FeaturedWorks = () => {
         <img
           key={work.src}
           src={work.src}
-          alt={work.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ')}
+          alt={`${work.author} ${work.title}`.trim()}
           className={i === index ? 'is-active' : undefined}
           onLoad={() => {
             const frame = frameRef.current
@@ -98,6 +102,12 @@ const FeaturedWorks = () => {
           }}
         />
       ))}
+      {slides[index] && (
+        <div className="featured-works-meta">
+          <span>{slides[index].author}</span>
+          <span>{slides[index].title}</span>
+        </div>
+      )}
     </div>
   )
 }

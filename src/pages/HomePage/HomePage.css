@@ -6,11 +6,13 @@
 }
 
 .home-section-3 {
+  position: relative;
   width: 100vw;
   height: 150vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 10vh;
 }
 
 .current-event {

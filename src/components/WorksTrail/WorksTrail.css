@@ -1,0 +1,14 @@
+.works-trail {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.works-trail img {
+  position: absolute;
+  height: auto;
+  transform: translate(-50%, -50%) scale(0.08);
+  transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}

@@ -1,0 +1,45 @@
+.dot-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: var(--color-text);
+  font-family: 'Inter', sans-serif;
+}
+
+.dot-logo text {
+  font-size: 13px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.dot-logo .dot-logo-start {
+  font-size: 15px;
+  text-anchor: end;
+}
+
+.dot-logo line {
+  stroke: var(--color-text);
+  stroke-width: 1.8;
+}
+
+.dot-logo .is-marked {
+  fill: var(--color-theme);
+}
+
+.dot-logo .is-marked text {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* The drawing is small on phones, so the numbers are drawn larger to stay readable. */
+@media (max-width: 800px) {
+  .dot-logo text,
+  .dot-logo .dot-logo-start {
+    font-size: 18px;
+  }
+
+  .dot-logo .is-marked text {
+    font-size: 26px;
+  }
+}

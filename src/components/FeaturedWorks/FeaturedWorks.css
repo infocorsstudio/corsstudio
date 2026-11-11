@@ -4,7 +4,6 @@
   top: 50%;
   z-index: 2;
   max-width: min(42rem, 84vw);
-  max-height: min(78vh, 52rem);
   transform: translateX(-50%);
   pointer-events: none;
   opacity: 0;
@@ -12,8 +11,8 @@
 
 .featured-works img {
   display: none;
-  max-width: inherit;
-  max-height: inherit;
+  max-width: 100%;
+  max-height: min(74vh, 50rem);
   width: auto;
   height: auto;
   object-fit: contain;
@@ -21,4 +20,15 @@
 
 .featured-works img.is-active {
   display: block;
+}
+
+.featured-works-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.35rem;
+  font-family: Inter, sans-serif;
+  font-size: var(--font-xxs);
+  color: #000;
+  white-space: nowrap;
 }

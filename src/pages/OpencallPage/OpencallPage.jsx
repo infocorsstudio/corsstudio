@@ -1,21 +1,60 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './OpencallPage.css'
 import { useSiteContent } from '../../data/siteContent'
 import useScrollReveal from '../../hooks/useScrollReveal'
 import { fillButton } from '../../buttonHover'
 import LogoSpinBg from '../../components/logoSpinBg/logoSpinBg'
 
+const work = (file) => `/assets/works/featuredWorks/${encodeURIComponent(file)}`
+
 const lookingFor = {
-  lead: 'Issue 001 invites artists, designers, writers, and photographers at any stage of their practice to submit work that responds to one of its three sections: Almost Human, The Other Side, or Something Is Missing.',
+  lead: 'CORS Studio works with artists, designers, writers, and photographers at any stage of their practice. We look for work across image, text, and design that has something precise to say. Any medium is welcome, as long as the work can live on the printed page.',
   formats: [
-    'Visual art, including painting, drawing, printmaking, and sculpture',
-    'Photography and image-based work',
-    'Writing, including essays, short fiction, and poetry',
-    'Moving image, presented as film stills or video frames',
-    'Graphic, fashion, and experimental design',
+    {
+      text: 'Visual art, including painting, drawing, printmaking, and sculpture',
+      images: [
+        work('Xianglong Li_Born Slippy.jpg'),
+        work('Yichen Ji_Synthetic Genesis.jpg'),
+        work('Jiayu Du_Odentalgia.jpg'),
+        work('Luyi Wang_Portable Privacy.jpg'),
+      ],
+    },
+    {
+      text: 'Photography and image-based work',
+      images: [
+        work('Cici Niu_Behind the Curtain01.jpg'),
+        work('Pepper Liu_embryo 02.jpg'),
+        work('Cici Niu_BlacknWhite01.jpg'),
+      ],
+    },
+    {
+      text: 'Writing, including essays, short fiction, and poetry',
+      images: [
+        work('Yuehan Ma_The Loop 01.jpg'),
+        work('Yuehan Ma_The LOOP 1.jpg'),
+        work('Yuehan Ma_DesireLoops.jpg'),
+      ],
+    },
+    {
+      text: 'Moving image, presented as film stills or video frames',
+      images: [
+        work('Luyi Wang_Montage #4.jpg'),
+        work('Yixhen Ji_Glorious Evolution.jpg'),
+      ],
+    },
+    {
+      text: 'Graphic, fashion, and experimental design',
+      images: [
+        work('Ruihan Zhang_2-and-others.jpg'),
+        work('Yichen Ji_Chaos Clock.png'),
+        work('Yuehan Ma_Pixel Eden.jpg'),
+        work('Feiyang Yin_Girls，Girls，Girls！.jpeg'),
+      ],
+    },
   ],
-  note: 'Any medium is welcome, provided the work can be translated onto the printed page.',
 }
+
+const SLIDE_MS = 3000
 
 const applicationSteps = [
   {
@@ -44,7 +83,34 @@ const OpencallPage = () => {
   const site = useSiteContent()
   const pageRef = useRef(null)
   const sectionTwoRef = useRef(null)
+  const [slides, setSlides] = useState(() => lookingFor.formats.map(() => 0))
   useScrollReveal(pageRef)
+
+  // Each card advances at the same interval, offset so the five never switch together.
+  useEffect(() => {
+    const ids = lookingFor.formats.map((format, i) => {
+      const count = format.images.length
+      if (count < 2) return 0
+      const step = () => {
+        setSlides((prev) => {
+          const next = [...prev]
+          next[i] = (next[i] + 1) % count
+          return next
+        })
+      }
+      const delay = Math.round((SLIDE_MS / lookingFor.formats.length) * i)
+      return window.setTimeout(() => {
+        step()
+        ids[i] = window.setInterval(step, SLIDE_MS)
+      }, delay)
+    })
+    return () => {
+      ids.forEach((id) => {
+        window.clearTimeout(id)
+        window.clearInterval(id)
+      })
+    }
+  }, [])
 
   return (
     <div className="opencall-page" ref={pageRef}>
@@ -122,30 +188,40 @@ const OpencallPage = () => {
           </>
         )}
       </section>
-      <section className="opencall-section opencall-looking">
-        <div className="opencall-copy">
-          <h2 data-reveal>What We Are Looking For</h2>
-          <p className="opencall-lead" data-reveal>
-            {lookingFor.lead}
-          </p>
-          <ul className="opencall-bento">
-            {lookingFor.formats.map((text) => (
-              <li key={text} data-reveal data-scramble>
-                {text}
-              </li>
-            ))}
-          </ul>
-          <p className="opencall-note" data-reveal>
-            {lookingFor.note}
-          </p>
-        </div>
+      <section className="opencall-section opencall-hero opencall-looking">
+        <ul className="opencall-bento">
+          <li className="opencall-bento-text" data-reveal>
+            <div className="opencall-bento-face">
+              <h2>What We Are Looking For</h2>
+              <p>{lookingFor.lead}</p>
+            </div>
+          </li>
+          {lookingFor.formats.map((format, i) => (
+            <li key={format.text} data-reveal data-scramble>
+              <div className="opencall-bento-images">
+                {format.images.map((src, imageIndex) => (
+                  <img
+                    key={src}
+                    src={src}
+                    alt=""
+                    className={imageIndex === slides[i] ? 'is-active' : undefined}
+                  />
+                ))}
+              </div>
+              <div className="opencall-bento-face">
+                <span>{format.text}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
-      <section className="opencall-section opencall-last">
-        <div className="opencall-copy">
+      <section className="opencall-section opencall-hero opencall-process">
+        <div className="opencall-process-body">
           <h2 data-reveal>Application Process</h2>
-          <ol className="opencall-list">
+          <ol className="opencall-line" data-reveal>
             {applicationSteps.map((step, i) => (
-              <li className="opencall-step" key={step.title} data-reveal>
+              <li className="opencall-step" key={step.title}>
+                <span className="opencall-dot" />
                 <span className="opencall-index">
                   {String(i + 1).padStart(3, '0')}
                 </span>

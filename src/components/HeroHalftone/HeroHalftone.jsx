@@ -6,6 +6,8 @@ const THIN = 0.8
 const THICK_FROM = 3
 const THICK_TO = 6
 const WORD_SCALE_TO = 2.5
+// Extra tracking, in em, reached together with the full word stretch.
+const LETTER_GAP = 0.5
 // Shared with the logo model; falls back if the stylesheet has not applied yet.
 const grayByte = () => {
   const hex = getComputedStyle(document.documentElement).getPropertyValue('--color-gray').trim()
@@ -45,8 +47,22 @@ const buildLines = (w, h) => {
   return lines
 }
 
+// Advances of C, O, R, S, centered on the word. Kerning matches a single fillText.
+const measureLetters = (ctx) => {
+  const word = 'CORS'
+  const total = ctx.measureText(word).width
+  if (!total) return []
+  const letters = []
+  for (let i = 0; i < word.length; i++) {
+    const a0 = ctx.measureText(word.slice(0, i)).width - total / 2
+    const a1 = ctx.measureText(word.slice(0, i + 1)).width - total / 2
+    if (a1 > a0) letters.push({ a0, a1 })
+  }
+  return letters
+}
+
 // Raster of the unstretched CORS word. Stretch samples this with an inverse
-// scale along the word, so it grows longer without moving the lines.
+// scale along each letter, and tracking opens the gaps between them.
 // On a phone the word is turned 90° clockwise and reads from top to bottom.
 const buildGlyphMask = (w, h, fontSize, vertical) => {
   const canvas = document.createElement('canvas')
@@ -57,6 +73,7 @@ const buildGlyphMask = (w, h, fontSize, vertical) => {
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillStyle = '#fff'
+  const letters = measureLetters(ctx)
   const measured = ctx.measureText('CORS')
   const ascent = measured.actualBoundingBoxAscent || fontSize * 0.8
   const descent = measured.actualBoundingBoxDescent || fontSize * 0.2
@@ -86,23 +103,80 @@ const buildGlyphMask = (w, h, fontSize, vertical) => {
     cx: w / 2,
     cy: h / 2,
     vertical,
+    fontSize,
+    letters,
   }
 }
 
+// Place each letter on the word axis. scale stretches the letters; gap opens
+// the space between them. Offsets are centered, in unstretched pixels.
+const placeLetters = (mask, scale) => {
+  const letters = mask.letters
+  if (!letters || letters.length < 2) return null
+  const t = Math.min(Math.max((scale - 1) / (WORD_SCALE_TO - 1), 0), 1)
+  const gap = t * mask.fontSize * LETTER_GAP
+  let total = gap * (letters.length - 1)
+  const widths = []
+  for (let i = 0; i < letters.length; i++) {
+    widths[i] = (letters[i].a1 - letters[i].a0) * scale
+    total += widths[i]
+  }
+  let cursor = -total / 2
+  const placed = []
+  for (let i = 0; i < letters.length; i++) {
+    const s0 = cursor
+    const s1 = cursor + widths[i]
+    cursor = s1 + gap
+    placed.push({ s0, s1, a0: letters[i].a0, a1: letters[i].a1 })
+  }
+  return placed
+}
+
 // Cut each line into the pieces that sit inside the glyph.
-// scale lengthens the word around its center, horizontally on desktop
-// and vertically on a phone. Endpoints land on the outline.
+// scale lengthens each letter around the word center, horizontally on desktop
+// and vertically on a phone. Letter spacing opens with the same progress.
+// Endpoints land on the outline.
 const clipLinesToGlyph = (lines, mask, scale) => {
   const scaleX = mask.vertical ? 1 : scale
   const scaleY = mask.vertical ? scale : 1
-  const left = mask.cx + (mask.x - mask.cx) * scaleX
-  const right = mask.cx + (mask.x + mask.mw - mask.cx) * scaleX
-  const top = mask.cy + (mask.y - mask.cy) * scaleY
-  const bottom = mask.cy + (mask.y + mask.mh - mask.cy) * scaleY
+  const placed = placeLetters(mask, scale)
+  const center = mask.vertical ? mask.cy : mask.cx
+  const left =
+    placed && !mask.vertical
+      ? center + placed[0].s0
+      : mask.cx + (mask.x - mask.cx) * scaleX
+  const right =
+    placed && !mask.vertical
+      ? center + placed[placed.length - 1].s1
+      : mask.cx + (mask.x + mask.mw - mask.cx) * scaleX
+  const top =
+    placed && mask.vertical
+      ? center + placed[0].s0
+      : mask.cy + (mask.y - mask.cy) * scaleY
+  const bottom =
+    placed && mask.vertical
+      ? center + placed[placed.length - 1].s1
+      : mask.cy + (mask.y + mask.mh - mask.cy) * scaleY
+
+  const mapWordAxis = (pos) => {
+    const scaleAxis = mask.vertical ? scaleY : scaleX
+    if (!placed) return center + (pos - center) / scaleAxis
+    const s = pos - center
+    for (let i = 0; i < placed.length; i++) {
+      const seg = placed[i]
+      if (s < seg.s0 || s > seg.s1) continue
+      const span = seg.s1 - seg.s0
+      const t = span === 0 ? 0 : (s - seg.s0) / span
+      return center + seg.a0 + t * (seg.a1 - seg.a0)
+    }
+    return null
+  }
 
   const inside = (sx, sy) => {
-    const gx = mask.cx + (sx - mask.cx) / scaleX
-    const gy = mask.cy + (sy - mask.cy) / scaleY
+    const word = mask.vertical ? mapWordAxis(sy) : mapWordAxis(sx)
+    if (word == null) return false
+    const gx = mask.vertical ? mask.cx + (sx - mask.cx) / scaleX : word
+    const gy = mask.vertical ? word : mask.cy + (sy - mask.cy) / scaleY
     const px = (gx - mask.x) | 0
     const py = (gy - mask.y) | 0
     if (px < 0 || py < 0 || px >= mask.mw || py >= mask.mh) return false
@@ -257,7 +331,7 @@ const HeroHalftone = ({ text = true }) => {
   // All ranges are driven by where section 2 sits in the viewport.
   // Color and thickness growth: section 2 top travels from mid-viewport to the top.
   // The word keeps stretching until section 2's bottom reaches the top of the screen.
-  // The lines themselves stay put.
+  // Letter spacing opens across that same stretch. The lines themselves stay put.
   // Thick lines then thin out as section 2 bottom travels from 70% to 30%.
   // The drawing fades out as section 2 bottom travels from 40% to the top.
   useEffect(() => {
